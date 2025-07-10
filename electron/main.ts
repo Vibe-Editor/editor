@@ -124,6 +124,7 @@ ipcMain.on("app:restart", ipcApp.restart);
 ipcMain.handle("stream:saveBufferToVideo", ipcStream.saveBufferToVideo);
 ipcMain.handle("stream:saveBufferToAudio", ipcStream.saveBufferToAudio);
 ipcMain.handle("stream:saveBufferToTempFile", ipcStream.saveBufferToTempFile);
+ipcMain.handle("stream:downloadFromUrl", ipcStream.downloadFromUrl);
 
 ipcMain.handle("media:backgroundRemove", ipcMedia.backgroundRemove);
 

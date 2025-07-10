@@ -1,5 +1,6 @@
 const API_BASE_URL = "https://backend.usuals.ai";
 
+// Segmentation API
 export const segmentationApi = {
   getSegmentation: async (prompt) => {
     try {
@@ -22,6 +23,17 @@ export const segmentationApi = {
         throw new Error("Invalid response format: missing segments array");
       }
 
+      // Ensure art_style exists for downstream calls
+      if (!data.artStyle) {
+        console.warn("segmentation API did not return artStyle; falling back to style");
+        data.artStyle = data.style || "";
+      }
+
+      // Validate art_style is not empty
+      if (!data.artStyle || data.artStyle.trim() === "") {
+        throw new Error("artStyle is required but was empty or missing from segmentation response");
+      }
+
       return data;
     } catch (error) {
       console.error("Error in getSegmentation:", error);
@@ -32,15 +44,17 @@ export const segmentationApi = {
 
 // Image generation API wrapper
 export const imageApi = {
-  generateImage: async (visual_prompt) => {
+  generateImage: async (visual_prompt, artStyle) => {
     try {
       const response = await fetch(`${API_BASE_URL}/image-gen`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ visual_prompt }),
+        body: JSON.stringify({ visual_prompt, art_style: artStyle }),
       });
+
+      console.log("Sending to image-gen:", { visual_prompt, art_style: artStyle });
 
       if (!response.ok) {
         throw new Error(`Failed to generate image: ${response.status}`);
@@ -58,7 +72,7 @@ export const imageApi = {
 
 // Video generation API wrapper
 export const videoApi = {
-  generateVideo: async (animation_prompt, image_url, narration_prompt) => {
+  generateVideo: async (animation_prompt, image_url, artStyle) => {
     try {
       const response = await fetch(`${API_BASE_URL}/video-gen`, {
         method: "POST",
@@ -68,9 +82,11 @@ export const videoApi = {
         body: JSON.stringify({
           animation_prompt,
           image_url,
-          narration_prompt,
+          art_style: artStyle,
         }),
       });
+
+      console.log("Sending to video-gen:", { animation_prompt, image_url, art_style: artStyle });
 
       if (!response.ok) {
         throw new Error(`Failed to generate video: ${response.status}`);

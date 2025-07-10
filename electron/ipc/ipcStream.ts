@@ -102,4 +102,29 @@ export const ipcStream = {
       return result;
     }
   },
+
+  // Download a remote file directly to disk using Node streams to avoid renderer memory overhead
+  downloadFromUrl: async (event, fileUrl, savePath) => {
+    const { default: https } = await import('https');
+    const { default: http } = await import('http');
+    const protocol = fileUrl.startsWith('https') ? https : http;
+
+    return new Promise((resolve) => {
+      const fileStream = fs.createWriteStream(savePath);
+
+      protocol.get(fileUrl, (response) => {
+        response.pipe(fileStream);
+
+        fileStream.on('finish', () => {
+          fileStream.close(() => {
+            resolve({ status: true, path: savePath });
+          });
+        });
+      }).on('error', (err) => {
+        console.error('Download error:', err);
+        fs.unlink(savePath, () => {});
+        resolve({ status: false, error: err.message });
+      });
+    });
+  },
 };

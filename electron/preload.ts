@@ -104,6 +104,9 @@ const request = {
 
     saveBufferToTempFile: (arrayBuffer, ext) =>
       ipcRenderer.invoke("stream:saveBufferToTempFile", arrayBuffer, ext),
+
+    downloadFromUrl: (fileUrl, savePath) =>
+      ipcRenderer.invoke("stream:downloadFromUrl", fileUrl, savePath),
   },
   ytdlp: {
     downloadVideo: (url, options) =>

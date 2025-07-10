@@ -26,7 +26,7 @@ function SegmentList({ segments, onSegmentClick, selectedSegmentId }) {
                         <img src={thumbUrl} alt={`Scene ${segment.id}`} className="w-10 h-10 object-cover rounded" />
                       ) : null;
                     })()}
-                    <h3 className="text-sm font-bold text-blue-400">Scene {segment.id}</h3>
+                  <h3 className="text-sm font-bold text-blue-400">Scene {segment.id}</h3>
                   </div>
                   <span className="text-xs text-gray-500">{segment.id}</span>
                 </div>
