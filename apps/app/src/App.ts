@@ -49,8 +49,7 @@ export class App extends LitElement {
 
         <div class="d-flex col justify-content-start">
           <div
-            style="height: 97vh;padding-left: var(--bs-gutter-x,.75rem);width: calc(100% - ${this
-              .resize.chatSidebar}px);"
+            style="height: 97vh;padding-left: 0;width: calc(100% - ${this.resize.chatSidebar}px);"
           >
             <control-ui
               id="split_top"
@@ -60,11 +59,11 @@ export class App extends LitElement {
             <timeline-ui
               id="split_bottom"
               class="row position-relative split-top align-items-end bg-darker line-top"
-              style="height: ${this.resize.vertical.bottom}%;"
+              style="height: ${this.resize.vertical.bottom}%; margin-left: ${this.resize.horizontal.panel}%; width: ${100 - this.resize.horizontal.panel}%;"
             ></timeline-ui>
           </div>
 
-          <chat-sidebar width="${this.resize.chatSidebar}px"></chat-sidebar>
+         
         </div>
 
         <offcanvas-list-ui></offcanvas-list-ui>

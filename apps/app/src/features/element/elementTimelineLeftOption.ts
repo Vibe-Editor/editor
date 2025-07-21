@@ -97,7 +97,8 @@ export class ElementTimelineLeftOption extends LitElement {
             index * height * 1.2 - this.timelineOptions.canvasVerticalScroll;
 
           ctx.lineWidth = 0;
-          ctx.fillStyle = "#292c2e";
+          // Use the same background colour as bg-darker (#0f1012) so the left panel blends with the area above
+          ctx.fillStyle = "#0f1012";
 
           ctx.beginPath();
           ctx.rect(0, top, this.resize.timelineVertical.leftOption, height);

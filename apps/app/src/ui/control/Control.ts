@@ -50,6 +50,9 @@ export class Control extends LitElement {
   @property()
   nowActivePanel = this.controlPanel.nowActive;
 
+  @property()
+  sidebarOpen: boolean = false;
+
   createRenderRoot() {
     useTimelineStore.subscribe((state) => {
       this.timeline = state.timeline;
@@ -68,6 +71,16 @@ export class Control extends LitElement {
     window.addEventListener("mousemove", this._handleMouseMove.bind(this));
 
     return this;
+  }
+
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen;
+    this.requestUpdate();
+  }
+
+  closeSidebar() {
+    this.sidebarOpen = false;
+    this.requestUpdate();
   }
 
   _handleMouseMove(e) {
@@ -130,131 +143,168 @@ export class Control extends LitElement {
           class="split-col-bar"
           @mousedown=${this._handleClickResizePanel}
         ></div>
-
         <div
-          class=" h-100 w-100 overflow-y-hidden overflow-x-hidden position-absolute "
+          class="h-100 w-100 overflow-y-hidden overflow-x-hidden position-absolute"
         >
-          <div class="d-flex align-items-start h-100">
+          <div class="d-flex align-items-start h-100 w-100">
+            <!-- Main content always full width -->
+            <div class="flex-grow-1 h-100 w-100"></div>
+            <!-- Drawer Sidebar (buttons + content) -->
             <div
-              id="sidebar"
-              class="nav sidebar-nav flex-column nav-pills bg-dark h-100 pt-1"
-              style="width: 2.5rem;"
-              role="tablist"
-              aria-orientation="vertical"
+              id="sidebar-drawer"
+              style="
+                position: fixed;
+                top: 0;
+                right: 0;
+                height: 100vh;
+                width: 22rem;
+                background: #222;
+                z-index: 2000;
+                box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+                transform: translateX(${this.sidebarOpen ? '0' : '100%'});
+                transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+                overflow: hidden;
+                display: flex;
+                flex-direction: row;
+                align-items: stretch;
+              "
             >
-              <button
-                class="btn-nav active"
-                data-bs-toggle="pill"
-                data-bs-target="#nav-home"
-                type="button"
-                role="tab"
-                aria-selected="true"
-              >
-                <span class="material-symbols-outlined"> settings</span>
-              </button>
-
-              <button
-                class="btn-nav"
-                data-bs-toggle="pill"
-                data-bs-target="#nav-draft"
-                type="button"
-                role="tab"
-                aria-selected="false"
-              >
-                <span class="material-symbols-outlined"> draft</span>
-              </button>
-
-              <button
-                class="btn-nav"
-                data-bs-toggle="pill"
-                data-bs-target="#nav-text"
-                type="button"
-                role="tab"
-                aria-selected="false"
-              >
-                <span class="material-symbols-outlined"> text_fields</span>
-              </button>
-
-              <button
-                class="btn-nav"
-                data-bs-toggle="pill"
-                data-bs-target="#nav-filter"
-                type="button"
-                role="tab"
-                aria-selected="false"
-              >
-                <span class="material-symbols-outlined"> library_books</span>
-              </button>
-
-              <button
-                class="btn-nav"
-                data-bs-toggle="pill"
-                data-bs-target="#nav-util"
-                type="button"
-                role="tab"
-                aria-selected="false"
-              >
-                <span class="material-symbols-outlined"> page_info</span>
-              </button>
-
-              <button
-                class="btn-nav"
-                data-bs-toggle="pill"
-                data-bs-target="#nav-option"
-                type="button"
-                role="tab"
-                aria-selected="false"
-              >
-                <span class="material-symbols-outlined"> extension</span>
-              </button>
-
-              <button
-                class="btn-nav"
-                data-bs-toggle="pill"
-                data-bs-target="#nav-output"
-                type="button"
-                role="tab"
-                aria-selected="false"
-              >
-                <span class="material-symbols-outlined"> output</span>
-              </button>
-            </div>
-            <div
-              class="tab-content overflow-y-scroll overflow-x-hidden  p-2 h-100"
-              style="width: calc(100% - 2.5rem);"
-            >
+              <!-- Sidebar buttons -->
               <div
-                class="tab-pane fade show active"
-                id="nav-home"
-                role="tabpanel"
+                class="nav sidebar-nav flex-column nav-pills bg-dark h-100 pt-1 position-relative"
+                style="width: 2.5rem; min-width: 2.5rem;"
+                role="tablist"
+                aria-orientation="vertical"
               >
-                <control-ui-setting />
+                <!-- Close (cross) button above the settings icon -->
+                <button
+                  class="btn btn-sm btn-default text-light position-absolute"
+                  style="left: 0; top: 0.5rem; z-index: 10; width: 2rem; height: 2rem; border-radius: 1rem; background: #222; border: none; display: flex; align-items: center; justify-content: center;"
+                  @click=${() => this.closeSidebar()}
+                  title="Close Toolbar"
+                >
+                  <span class="material-symbols-outlined">
+                    close
+                  </span>
+                </button>
+                <div style="margin-top: 3rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                  <button
+                    class="btn-nav active"
+                    data-bs-toggle="pill"
+                    data-bs-target="#nav-home"
+                    type="button"
+                    role="tab"
+                    aria-selected="true"
+                  >
+                    <span class="material-symbols-outlined"> settings</span>
+                  </button>
+                  <button
+                    class="btn-nav"
+                    data-bs-toggle="pill"
+                    data-bs-target="#nav-draft"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                  >
+                    <span class="material-symbols-outlined"> draft</span>
+                  </button>
+                  <button
+                    class="btn-nav"
+                    data-bs-toggle="pill"
+                    data-bs-target="#nav-text"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                  >
+                    <span class="material-symbols-outlined"> text_fields</span>
+                  </button>
+                  <button
+                    class="btn-nav"
+                    data-bs-toggle="pill"
+                    data-bs-target="#nav-filter"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                  >
+                    <span class="material-symbols-outlined"> library_books</span>
+                  </button>
+                  <button
+                    class="btn-nav"
+                    data-bs-toggle="pill"
+                    data-bs-target="#nav-util"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                  >
+                    <span class="material-symbols-outlined"> page_info</span>
+                  </button>
+                  <button
+                    class="btn-nav"
+                    data-bs-toggle="pill"
+                    data-bs-target="#nav-option"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                  >
+                    <span class="material-symbols-outlined"> extension</span>
+                  </button>
+                  <button
+                    class="btn-nav"
+                    data-bs-toggle="pill"
+                    data-bs-target="#nav-output"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                  >
+                    <span class="material-symbols-outlined"> output</span>
+                  </button>
+                </div>
               </div>
-
-              <div class="tab-pane fade" id="nav-draft" role="tabpanel">
-                <asset-browser></asset-browser>
-              </div>
-
-              <div class="tab-pane fade" id="nav-text" role="tabpanel">
-                <control-ui-text />
-              </div>
-
-              <div class="tab-pane fade" id="nav-option" role="tabpanel">
-                <control-ui-extension />
-              </div>
-
-              <div class="tab-pane fade" id="nav-util" role="tabpanel">
-                <control-ui-util />
-              </div>
-
-              <div class="tab-pane fade" id="nav-filter" role="tabpanel">
-                <control-ui-filter />
-              </div>
-
-              <div class="tab-pane fade" id="nav-output" role="tabpanel">
-                <control-ui-render />
+              <!-- Tab content -->
+              <div
+                class="tab-content overflow-y-scroll overflow-x-hidden p-2 h-100"
+                style="width: 19.5rem; min-width: 0;"
+              >
+                <div
+                  class="tab-pane fade show active"
+                  id="nav-home"
+                  role="tabpanel"
+                >
+                  <control-ui-setting />
+                </div>
+                <div class="tab-pane fade" id="nav-draft" role="tabpanel">
+                  <asset-browser></asset-browser>
+                </div>
+                <div class="tab-pane fade" id="nav-text" role="tabpanel">
+                  <control-ui-text />
+                </div>
+                <div class="tab-pane fade" id="nav-option" role="tabpanel">
+                  <control-ui-extension />
+                </div>
+                <div class="tab-pane fade" id="nav-util" role="tabpanel">
+                  <control-ui-util />
+                </div>
+                <div class="tab-pane fade" id="nav-filter" role="tabpanel">
+                  <control-ui-filter />
+                </div>
+                <div class="tab-pane fade" id="nav-output" role="tabpanel">
+                  <control-ui-render />
+                </div>
               </div>
             </div>
+            <!-- Drawer Toggle Button (when closed) -->
+            ${!this.sidebarOpen ? html`
+              <button
+                class="btn btn-sm btn-default text-light"
+                style="position: fixed; right: 2.5rem; top: 4rem; width: 2rem; height: 2rem; border-radius: 1rem; background: #222; border: none; z-index: 2100; display: flex; align-items: center; justify-content: center;"
+                @click=${this.toggleSidebar}
+                title="Open Toolbar"
+              >
+                <span class="material-symbols-outlined">
+                  arrow_right
+                </span>
+              </button>
+            ` : ''}
           </div>
         </div>
       </div>

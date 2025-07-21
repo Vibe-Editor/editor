@@ -220,7 +220,6 @@ export class Timeline extends LitElement {
           </div>
         </div>
         <div class="d-flex col col-5 gap-2">
-          <ai-input class="w-100"></ai-input>
           <div
             class="d-flex justify-content-end"
             id="keyframeEditorButtonGroup"
