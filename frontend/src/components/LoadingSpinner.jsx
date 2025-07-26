@@ -20,7 +20,7 @@ function LoadingSpinner() {
   return (
     <div className="flex flex-col items-center justify-center space-y-4 p-8">
       {/* Spinner */}
-      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="spinner"></div>
       
       {/* Progress bar */}
       <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">

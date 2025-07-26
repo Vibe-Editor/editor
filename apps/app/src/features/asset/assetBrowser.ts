@@ -11,7 +11,6 @@ export class AssetBrowser extends LitElement {
   directory: string;
   constructor() {
     super();
-
     this.directory = "";
   }
 
