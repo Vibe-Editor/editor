@@ -74,8 +74,23 @@ window.electronAPI.res.timeline.add(async (event, timeline) => {
     }
   }
 
-  // Ensure preview canvas shows first frames immediately
+  // Move play-head to the very start so freshly-added clips are visible in the
+  // preview.  This avoids confusion when the user’s cursor was parked beyond
+  // the new content (e.g. after a previous editing session).
+  const timelineStore = useTimelineStore.getState();
   const preview = document.querySelector("preview-canvas");
+
+  if (timelineStore.cursor !== 0) {
+    timelineStore.setCursor(0);
+    // Because we changed the cursor we need to refresh asset loading & redraw
+    const { timeline } = timelineStore;
+    const newCursor = 0;
+    await loadedAssetStore.getState().loadAssetsNeededAtTime(newCursor, timeline);
+    await loadedAssetStore.getState().seek(timeline, newCursor);
+    if (preview) preview.drawCanvas(preview.canvas);
+  }
+
+  // Ensure preview canvas shows first frames immediately
   if (preview) {
     const { cursor, timeline } = useTimelineStore.getState();
     await loadedAssetStore.getState().loadAssetsNeededAtTime(cursor, timeline);
