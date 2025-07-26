@@ -12,7 +12,6 @@ import { imageApi } from "../services/image";
 import { s3Api } from "../services/s3";
 import { videoApi } from "../services/video-gen";
 import { projectApi } from "../services/project";
-import "../styles/chatwidget.css";
 import React from "react";
 
 function ChatWidget() {
@@ -933,6 +932,14 @@ function ChatWidget() {
   // helper maps combining stored data so UI shows even after reload
   const combinedVideosMap = React.useMemo(() => ({ ...generatedVideos, ...storedVideosMap }), [generatedVideos, storedVideosMap]);
 
+  // Reflect open state on host element attribute for CSS / external observers (e.g., publish button)
+  useEffect(() => {
+    const hostEl = document.querySelector('react-chat-widget');
+    if (hostEl) {
+      hostEl.setAttribute('data-open', open ? 'true' : 'false');
+    }
+  }, [open]);
+
   return (
     <div className='z-10' onClick={() => {
         setShowMenu(false);
@@ -941,7 +948,7 @@ function ChatWidget() {
       {/* Floating chat button */}
       {!open && (
         <button
-          className='btn-floating fixed top-2/4 right-8 transform translate-y-12 px-4 py-2 rounded-lg text-white text-sm flex items-center gap-2 shadow-2xl z-[10001] backdrop-blur-lg border border-white/20 dark:border-gray-600/40 bg-gradient-to-tr from-gray-700/90 to-gray-800/90 dark:from-gray-700/90 dark:to-gray-800/90 transition-all duration-200 ease-in-out'
+          className='fixed top-2/4 right-8 transform translate-y-12 px-4 py-2 rounded-lg text-white text-sm flex items-center gap-2 shadow-2xl z-[10001] backdrop-blur-lg border border-white/20 dark:border-gray-600/40 bg-gradient-to-tr from-gray-700/90 to-gray-800/90 dark:from-gray-700/90 dark:to-gray-800/90 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95'
           aria-label='Open chat'
           onClick={() => setOpen(true)}
         >
@@ -952,9 +959,12 @@ function ChatWidget() {
 
       {/* Sliding sidebar */}
       <div
-        className={`glass-container fixed rounded-2xl mb-4 mr-4 bottom-0 right-0 h-[90vh] sm:h-[87vh] w-[90vw] sm:w-[360px] md:w-[25vw] max-w-[600px] text-white transform transition-transform duration-500 ${
+        className={`fixed rounded-2xl mb-4 mr-4 bottom-0 right-0 h-[90vh] sm:h-[87vh] w-[90vw] sm:w-[360px] md:w-[25vw] max-w-[600px] text-white transform transition-transform duration-500 ${
           open ? "translate-x-0" : "translate-x-full"
-        } z-[10000] flex flex-col shadow-2xl`}
+        } z-[10000] flex flex-col shadow-2xl backdrop-blur-xl bg-white/20 dark:bg-gray-800/30 border border-white/30 dark:border-gray-700/40 overflow-hidden`}
+        style={{
+          animation: open ? 'slideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1)' : undefined
+        }}
       >
         {/* Header */}
         <div className='flex justify-between items-center p-3 border-b border-gray-800 sticky top-0 relative'>
@@ -1139,7 +1149,10 @@ function ChatWidget() {
           </div>
 
           {/* Content Area */}
-          <div className='flex-1 overflow-y-auto p-4'>
+          <div className='flex-1 overflow-y-auto p-4' style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(255,255,255,0.25) transparent'
+          }}>
             {error && (
               <div className='mb-4 p-3 bg-red-900 text-red-100 rounded text-sm'>
                 {error}
@@ -1154,7 +1167,7 @@ function ChatWidget() {
 
             {loading && (
               <div className='flex items-center justify-center py-8'>
-                <LoadingSpinner />
+                <div className="w-8 h-8 rounded-full border-4 border-gray-400 border-t-indigo-500 animate-spin"></div>
                 <span className='ml-2 text-gray-300'>Processing...</span>
               </div>
             )}
@@ -1365,7 +1378,7 @@ function ChatWidget() {
                 >
                   {addingTimeline ? (
                     <>
-                      <div className='w-4 h-4'><LoadingSpinner /></div>
+                      <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
                       <span>Adding to Timeline...</span>
                     </>
                   ) : (
@@ -1424,13 +1437,13 @@ function ChatWidget() {
                     }
                   }}
                   placeholder='Start Creating...'
-                  className='w-full glass-input text-sm text-white pl-4 pr-12 py-3 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500'
+                  className='w-full text-sm text-white pl-4 pr-12 py-3 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 bg-white/15 dark:bg-gray-700/40 backdrop-blur-sm border border-white/25 dark:border-gray-600/40 rounded-md focus:border-indigo-500 transition-colors duration-200 placeholder-gray-500 dark:placeholder-gray-400'
                   disabled={loading}
                 />
 
                 <button
                   type='button'
-                  className={`absolute top-1/2 right-3 -translate-y-1/2 send-btn flex items-center justify-center rounded-full h-9 w-9 transition-opacity duration-150 ${
+                  className={`absolute top-1/2 right-3 -translate-y-1/2 flex items-center justify-center rounded-full h-9 w-9 transition-all duration-150 bg-gradient-to-br from-indigo-500/80 via-purple-500/80 to-pink-500/80 backdrop-blur-sm border border-white/30 dark:border-gray-600/40 shadow-md ${
                     loading || !prompt.trim() ? "opacity-40 cursor-not-allowed" : "hover:scale-105 active:scale-95"
                   }`}
                   disabled={loading || !prompt.trim()}
@@ -1470,7 +1483,7 @@ function ChatWidget() {
             <label className="text-xs text-gray-300 mb-1">Project Name</label>
             <input
               ref={nameInputRef}
-              className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none"
+              className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={newProjectName}
               onChange={e => setNewProjectName(e.target.value)}
               disabled={creatingProject}
@@ -1479,7 +1492,7 @@ function ChatWidget() {
             />
             <label className="text-xs text-gray-300 mb-1">Description (optional)</label>
             <textarea
-              className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none resize-y min-h-[60px] max-h-[300px]"
+              className="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[60px] max-h-[300px]"
               value={newProjectDesc}
               onChange={e => setNewProjectDesc(e.target.value)}
               disabled={creatingProject}
@@ -1490,13 +1503,13 @@ function ChatWidget() {
             <div className="flex gap-2 mt-2">
               <button
                 type="button"
-                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white rounded px-2 py-1"
+                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white rounded px-2 py-1 transition-colors"
                 onClick={closeCreateModal}
                 disabled={creatingProject}
               >Cancel</button>
               <button
                 type="submit"
-                className="flex-1 bg-green-600 hover:bg-green-500 text-white rounded px-2 py-1"
+                className="flex-1 bg-green-600 hover:bg-green-500 text-white rounded px-2 py-1 transition-colors disabled:opacity-50"
                 disabled={creatingProject || !newProjectName.trim()}
               >{creatingProject ? "Creating..." : "Create"}</button>
             </div>
@@ -1521,7 +1534,7 @@ function ChatWidget() {
             onClick={(e) => e.stopPropagation()}
           />
           <button
-            className="absolute top-4 right-4 text-white text-2xl"
+            className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               setShowImageModal(false);
@@ -1551,7 +1564,7 @@ function ChatWidget() {
             onClick={(e) => e.stopPropagation()}
           />
           <button
-            className="absolute top-4 right-4 text-white text-2xl"
+            className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               setShowVideoModal(false);
@@ -1563,6 +1576,43 @@ function ChatWidget() {
         </div>,
         document.body
       )}
+
+      {/* Keyframes for animations */}
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(50px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        /* Custom scrollbar for content area */
+        .content-area {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255,255,255,0.25) transparent;
+        }
+        
+        .content-area::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .content-area::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .content-area::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.25);
+          border-radius: 3px;
+        }
+        
+        .dark .content-area::-webkit-scrollbar-thumb {
+          background-color: rgba(100, 100, 100, 0.4);
+        }
+      `}</style>
     </div>
   );
 }
