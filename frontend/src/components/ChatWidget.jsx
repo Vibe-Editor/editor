@@ -14,7 +14,7 @@ import { projectApi } from "../services/project";
 import ModelSelector from "./ModelSelector";
 import CreditWidget from "./CreditWidget";
 import { useProjectStore } from "../store/useProjectStore";
-import { getTextCreditCost, getImageCreditCost, getVideoCreditCost, formatCreditDeduction } from "../lib/pricing";
+import { getTextCreditCost, getImageCreditCost, getVideoCreditCost, formatCreditDeduction, getCreditCost } from "../lib/pricing";
 import "../styles/chatwidget.css";
 import React from "react";
 
@@ -286,10 +286,11 @@ function ChatWidget() {
         break;
       case 'Video Generation':
         if (model) {
-          credits = getVideoCreditCost(model, 5) * count; // 8 seconds default
+          // For video generation, use base cost per video (not per second)
+          credits = getCreditCost("VIDEO", model) * count;
           message = formatCreditDeduction(`Video Generation (${model})`, credits);
         } else {
-          credits = getVideoCreditCost('veo2', 5) * count; // default to veo2
+          credits = getCreditCost("VIDEO", 'veo2') * count; // default to veo2
           message = formatCreditDeduction('Video Generation', credits);
         }
         break;
@@ -587,9 +588,11 @@ function ChatWidget() {
         }
       }
 
-      // Show credit deduction after successful generation for all segments
-      const totalSegments = segments.length;
-      showCreditDeduction("Image Generation", selectedImageModel, totalSegments);
+      // Show credit deduction only for segments that actually succeeded
+      const successfulSegments = Object.keys(imagesMap).length;
+      if (successfulSegments > 0) {
+        showCreditDeduction("Image Generation", selectedImageModel, successfulSegments);
+      }
 
       // Update segments with s3Key for video generation
       const segmentsWithS3Key = segments.map(segment => ({
@@ -633,12 +636,6 @@ function ChatWidget() {
       const segments = selectedScript.segments;
       const artStyle = selectedScript.artStyle || "";
       const videosMap = {};
-      
-      // Count valid segments (those with images)
-      const validSegments = segments.filter(segment => {
-        const segmentIdVariants = [segment.id, `seg-${segment.id}`, segment.segmentId, segment.uuid];
-        return segmentIdVariants.some(id => generatedImages[id]);
-      });
 
       for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
@@ -738,10 +735,10 @@ function ChatWidget() {
         }
       }
 
-      // Show credit deduction after successful generation for valid segments
-      const totalValidSegments = validSegments.length;
-      if (totalValidSegments > 0) {
-        showCreditDeduction("Video Generation", selectedVideoModel, totalValidSegments);
+      // Show credit deduction only for segments that actually succeeded
+      const successfulSegments = Object.keys(videosMap).length;
+      if (successfulSegments > 0) {
+        showCreditDeduction("Video Generation", selectedVideoModel, successfulSegments);
       }
 
       setGeneratedVideos(videosMap);
