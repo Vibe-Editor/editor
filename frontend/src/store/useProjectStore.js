@@ -56,22 +56,51 @@ const storeImpl = (set, get) => ({
       set({ error: e.message || "Failed to fetch projects", loading: false });
     }
   },
+
   fetchProjectEssentials: async (projectId) => {
     const { setSegmentations, setImages, setVideos } = get();
+    set((state) => ({
+      loadingData: {
+        ...state.loadingData,
+        images: true,
+        videos: true,
+        segmentations: true,
+      },
+    }));
+
     try {
       const [segmentationsRes, imagesRes, videosRes] = await Promise.all([
         projectApi.getProjectSegmentations(projectId, { page: 1, limit: 50 }),
         projectApi.getProjectImages(projectId, { page: 1, limit: 100 }),
         projectApi.getProjectVideos(projectId, { page: 1, limit: 100 }),
       ]);
+
       setSegmentations(segmentationsRes.data || []);
       setImages(imagesRes.data || []);
       setVideos(videosRes.data || []);
+
+      set((state) => ({
+        loadingData: {
+          ...state.loadingData,
+          images: false,
+          videos: false,
+          segmentations: false,
+        },
+      }));
     } catch (error) {
       console.error("Failed to fetch project essentials:", error);
-      set({ error: error.message || "Failed to fetch project data" });
+      set((state) => ({
+        error: error.message || "Failed to fetch project data",
+        loadingData: {
+          ...state.loadingData,
+          images: false,
+          videos: false,
+          segmentations: false,
+        },
+      }));
     }
   },
+
   fetchConversations: async (projectId, page = 1, limit = 10) => {
     set((state) => ({
       loadingData: { ...state.loadingData, conversations: true },
@@ -95,6 +124,7 @@ const storeImpl = (set, get) => ({
       throw e;
     }
   },
+
   fetchConcepts: async (projectId, page = 1, limit = 10) => {
     set((state) => ({
       loadingData: { ...state.loadingData, concepts: true },
@@ -114,144 +144,6 @@ const storeImpl = (set, get) => ({
       set((state) => ({
         error: e.message || "Failed to fetch concepts",
         loadingData: { ...state.loadingData, concepts: false },
-      }));
-      throw e;
-    }
-  },
-  fetchImages: async (projectId, page = 1, limit = 10) => {
-    set((state) => ({
-      loadingData: { ...state.loadingData, images: true },
-      error: null,
-    }));
-    try {
-      const data = await projectApi.getProjectImages(projectId, {
-        page,
-        limit,
-      });
-      set((state) => ({
-        images: data.data || [],
-        loadingData: { ...state.loadingData, images: false },
-      }));
-      return data;
-    } catch (e) {
-      set((state) => ({
-        error: e.message || "Failed to fetch images",
-        loadingData: { ...state.loadingData, images: false },
-      }));
-      throw e;
-    }
-  },
-  fetchVideos: async (projectId, page = 1, limit = 10) => {
-    set((state) => ({
-      loadingData: { ...state.loadingData, videos: true },
-      error: null,
-    }));
-    try {
-      const data = await projectApi.getProjectVideos(projectId, {
-        page,
-        limit,
-      });
-      set((state) => ({
-        videos: data.data || [],
-        loadingData: { ...state.loadingData, videos: false },
-      }));
-      return data;
-    } catch (e) {
-      set((state) => ({
-        error: e.message || "Failed to fetch videos",
-        loadingData: { ...state.loadingData, videos: false },
-      }));
-      throw e;
-    }
-  },
-  fetchVoiceovers: async (projectId, page = 1, limit = 10) => {
-    set((state) => ({
-      loadingData: { ...state.loadingData, voiceovers: true },
-      error: null,
-    }));
-    try {
-      const data = await projectApi.getProjectVoiceovers(projectId, {
-        page,
-        limit,
-      });
-      set((state) => ({
-        voiceovers: data.data || [],
-        loadingData: { ...state.loadingData, voiceovers: false },
-      }));
-      return data;
-    } catch (e) {
-      set((state) => ({
-        error: e.message || "Failed to fetch voiceovers",
-        loadingData: { ...state.loadingData, voiceovers: false },
-      }));
-      throw e;
-    }
-  },
-  fetchSegmentations: async (projectId, page = 1, limit = 10) => {
-    set((state) => ({
-      loadingData: { ...state.loadingData, segmentations: true },
-      error: null,
-    }));
-    try {
-      const data = await projectApi.getProjectSegmentations(projectId, {
-        page,
-        limit,
-      });
-      set((state) => ({
-        segmentations: data.data || [],
-        loadingData: { ...state.loadingData, segmentations: false },
-      }));
-      return data;
-    } catch (e) {
-      set((state) => ({
-        error: e.message || "Failed to fetch segmentations",
-        loadingData: { ...state.loadingData, segmentations: false },
-      }));
-      throw e;
-    }
-  },
-  fetchSummaries: async (projectId, page = 1, limit = 10) => {
-    set((state) => ({
-      loadingData: { ...state.loadingData, summaries: true },
-      error: null,
-    }));
-    try {
-      const data = await projectApi.getProjectSummaries(projectId, {
-        page,
-        limit,
-      });
-      set((state) => ({
-        summaries: data.data || [],
-        loadingData: { ...state.loadingData, summaries: false },
-      }));
-      return data;
-    } catch (e) {
-      set((state) => ({
-        error: e.message || "Failed to fetch summaries",
-        loadingData: { ...state.loadingData, summaries: false },
-      }));
-      throw e;
-    }
-  },
-  fetchResearch: async (projectId, page = 1, limit = 10) => {
-    set((state) => ({
-      loadingData: { ...state.loadingData, research: true },
-      error: null,
-    }));
-    try {
-      const data = await projectApi.getProjectResearch(projectId, {
-        page,
-        limit,
-      });
-      set((state) => ({
-        research: data.data || [],
-        loadingData: { ...state.loadingData, research: false },
-      }));
-      return data;
-    } catch (e) {
-      set((state) => ({
-        error: e.message || "Failed to fetch research",
-        loadingData: { ...state.loadingData, research: false },
       }));
       throw e;
     }
@@ -308,6 +200,7 @@ const storeImpl = (set, get) => ({
       await get().fetchProjectEssentials(selectedProject.id);
     }
   },
+
   clearProjectData: () => {
     set({
       conversations: [],
@@ -323,9 +216,4 @@ const storeImpl = (set, get) => ({
   },
 });
 
-export const useProjectStore =
-  window.__MY_GLOBAL_PROJECT_STORE__ || create(storeImpl);
-
-if (!window.__MY_GLOBAL_PROJECT_STORE__) {
-  window.__MY_GLOBAL_PROJECT_STORE__ = useProjectStore;
-}
+export const useProjectStore = create(storeImpl);

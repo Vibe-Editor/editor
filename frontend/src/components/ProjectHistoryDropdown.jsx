@@ -1,35 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { projectApi } from "../services/project";
+import { useProjectStore } from "../store/useProjectStore";
 
 export function ProjectHistoryDropdown({ onSelect }) {
   const { isAuthenticated } = useAuth();
-  const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const storedProjects = localStorage.getItem('project-store-projects');
-    const storedSelected = localStorage.getItem('project-store-selectedProject');
-    if (storedProjects) setProjects(JSON.parse(storedProjects));
-    if (storedSelected) setSelectedProject(JSON.parse(storedSelected));
-  }, []);
+  const {
+    projects,
+    selectedProject,
+    loading,
+    error,
+    fetchProjects,
+    setSelectedProject,
+    fetchProjectEssentials,
+  } = useProjectStore();
 
   // Fetch projects if needed
   useEffect(() => {
     if (isAuthenticated && projects.length === 0 && !loading) {
-      setLoading(true);
-      projectApi.getProjects({ page: 1, limit: 20 })
-        .then((data) => {
-          setProjects(data);
-          localStorage.setItem('project-store-projects', JSON.stringify(data));
-        })
-        .catch((e) => setError(e.message || "Failed to fetch projects"))
-        .finally(() => setLoading(false));
+      fetchProjects(1, 20);
     }
-  }, [isAuthenticated, projects.length, loading]);
+  }, [isAuthenticated, projects.length, loading, fetchProjects]);
 
   if (loading) return <div className="p-4 text-gray-400">Loading projects...</div>;
   if (error) return <div className="p-4 text-red-400">{error}</div>;
@@ -38,24 +28,29 @@ export function ProjectHistoryDropdown({ onSelect }) {
   const handleSelect = async (e) => {
     const projectId = e.target.value;
     const selected = projects.find((p) => String(p.id) === String(projectId));
-    setSelectedProject(selected);
-    localStorage.setItem('project-store-selectedProject', JSON.stringify(selected));
-    if (onSelect) onSelect(selected);
-    if (projectId) {
+
+    if (selected) {
+      // Update Zustand store
+      setSelectedProject(selected);
+      // Persist in localStorage so other widgets pick up the change
       try {
-        // Fetch essentials and store in localStorage
-        const [images, videos, segmentations] = await Promise.all([
-          projectApi.getProjectImages(projectId, { page: 1, limit: 100 }),
-          projectApi.getProjectVideos(projectId, { page: 1, limit: 100 }),
-          projectApi.getProjectSegmentations(projectId, { page: 1, limit: 50 }),
-        ]);
-        localStorage.setItem('project-store-images', JSON.stringify(images?.data || []));
-        localStorage.setItem('project-store-videos', JSON.stringify(videos?.data || []));
-        localStorage.setItem('project-store-segmentations', JSON.stringify(segmentations?.data || []));
-        console.log("Fetched and stored essentials for project", projectId);
-      } catch (err) {
-        console.error("Failed to fetch essentials for project", err);
+        localStorage.setItem(
+          "project-store-selectedProject",
+          JSON.stringify(selected)
+        );
+        // Clear previous cached essentials to avoid stale data
+        localStorage.removeItem("project-store-images");
+        localStorage.removeItem("project-store-videos");
+        localStorage.removeItem("project-store-segmentations");
+        // Notify same-tab listeners
+        window.dispatchEvent(
+          new CustomEvent("project-switch", { detail: selected })
+        );
+      } catch (e) {
+        console.warn("Failed to write project selection to localStorage", e);
       }
+      if (onSelect) onSelect(selected);
+      await fetchProjectEssentials(projectId);
     }
   };
 
@@ -67,7 +62,9 @@ export function ProjectHistoryDropdown({ onSelect }) {
         value={selectedProject?.id || ""}
         onChange={handleSelect}
       >
-        <option value="" disabled>Select a project...</option>
+        <option value="" disabled>
+          Select a project...
+        </option>
         {projects.map((project) => (
           <option key={project.id} value={project.id}>
             {project.name} - {project.description}
@@ -83,15 +80,11 @@ export function ProjectLoader() {
 }
 
 export function SelectedProjectBanner() {
-  const [selectedProject, setSelectedProject] = useState(null);
-  useEffect(() => {
-    const storedSelected = localStorage.getItem('project-store-selectedProject');
-    if (storedSelected) setSelectedProject(JSON.parse(storedSelected));
-  }, []);
+  const { selectedProject } = useProjectStore();
   if (!selectedProject) return null;
   return (
-    <div className='bg-blue-900 text-blue-100 px-4 py-2 text-sm font-medium border-b border-blue-800'>
-      Working on: <span className='font-semibold'>{selectedProject.name}</span>
+    <div className="bg-blue-900 text-blue-100 px-4 py-2 text-sm font-medium border-b border-blue-800">
+      Working on: <span className="font-semibold">{selectedProject.name}</span>
     </div>
   );
 }

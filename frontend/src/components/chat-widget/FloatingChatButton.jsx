@@ -5,16 +5,57 @@ import React from "react";
  * Rendered only when the sidebar (open state) is false.
  */
 export default function FloatingChatButton({ open, setOpen }) {
-  if (open) return null;
+  console.log('FloatingChatButton rendered, open:', open);
+  
+  // For debugging, let's always show the button
+  // if (open) return null;
+
+  React.useEffect(() => {
+    console.log('FloatingChatButton mounted - checking DOM');
+    const button = document.getElementById('chat-widget-button');
+    if (button) {
+      console.log('Button found in DOM:', button);
+      console.log('Button styles:', window.getComputedStyle(button));
+    } else {
+      console.log('Button NOT found in DOM');
+    }
+  }, []);
 
   return (
     <button
-      className="shadow-lg fixed top-2/4 right-8 transform translate-y-12 px-4 py-2 rounded-lg text-white text-sm flex items-center gap-2 shadow-2xl z-[10001] backdrop-blur-lg border border-white/20 dark:border-gray-600/40 bg-gradient-to-tr from-gray-700/90 to-gray-800/90 dark:from-gray-700/90 dark:to-gray-800/90 transition-all duration-200 ease-in-out"
+      id="chat-widget-button"
+      style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        zIndex: 99999999, // Extremely high z-index
+        backgroundColor: '#ff0000',
+        color: 'white',
+        padding: '20px 30px',
+        borderRadius: '15px',
+        border: '4px solid yellow', // Bright border to make it visible
+        boxShadow: '0 10px 30px rgba(255,0,0,0.8)', // Red glow
+        fontSize: '20px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        minWidth: '150px',
+        minHeight: '60px',
+        // Add more debugging styles
+        opacity: 1,
+        visibility: 'visible',
+        pointerEvents: 'auto'
+      }}
       aria-label="Open chat"
-      onClick={() => setOpen(true)}
+      onClick={() => {
+        console.log('Chat button clicked!');
+        setOpen(true);
+      }}
     >
-      <span className="text-gray-300">✨</span>
-      <span className="text-gray-300 font-medium">Chat</span>
+      <span style={{ fontSize: '24px' }}>✨</span>
+      <span>CHAT BUTTON</span>
     </button>
   );
 }

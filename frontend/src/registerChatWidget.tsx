@@ -20,7 +20,19 @@ const ChatWidgetWithAuth = () => (
 
 // Wrap React component into a custom element that can be used anywhere
 // (lit-based Electron renderer, plain HTML, etc.).
+const ChatWidgetElement = reactToWebComponent(ChatWidgetWithAuth, React, ReactDOM, {});
+
+// Add some debugging
+console.log('Registering react-chat-widget element');
+
 customElements.define(
   'react-chat-widget',
-  reactToWebComponent(ChatWidgetWithAuth, React, ReactDOM, {})
-); 
+  ChatWidgetElement
+);
+
+// Also log when the element is created
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded, looking for react-chat-widget elements');
+  const elements = document.querySelectorAll('react-chat-widget');
+  console.log('Found react-chat-widget elements:', elements.length);
+}); 
