@@ -105,29 +105,54 @@ function ChatWidget() {
     isStepDisabled
   } = useChatFlow(selectedProject, concepts, selectedConcept, scripts, selectedScript, generatedImages, generatedVideos);
 
-  useEffect(() => {
-    const handleStorage = () => {
-      try {
-        const stored = localStorage.getItem('project-store-selectedProject');
-        const newSelectedProject = stored ? JSON.parse(stored) : null;
-        setSelectedProject(newSelectedProject);
-        
-        if (newSelectedProject) {
-          setStoredVideosMap(
-            JSON.parse(localStorage.getItem(`project-store-videos`) || "{}"),
-          );
-        } else {
-          setStoredVideosMap(
-            JSON.parse(localStorage.getItem("segmentVideos") || "{}"),
-          );
-        }
-      } catch (e) {
-        console.error(e);
+  // Function to handle project changes
+  const handleProjectChange = () => {
+    try {
+      const stored = localStorage.getItem('project-store-selectedProject');
+      const newSelectedProject = stored ? JSON.parse(stored) : null;
+      setSelectedProject(newSelectedProject);
+      
+      if (newSelectedProject) {
+        setStoredVideosMap(
+          JSON.parse(localStorage.getItem(`project-store-videos`) || "{}"),
+        );
+      } else {
+        setStoredVideosMap(
+          JSON.parse(localStorage.getItem("segmentVideos") || "{}"),
+        );
       }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Function to handle project selection from dropdown
+  const handleProjectSelect = (project) => {
+    console.log('Project selected:', project);
+    setSelectedProject(project);
+    setShowProjectHistory(false);
+    
+    if (project) {
+      setStoredVideosMap(
+        JSON.parse(localStorage.getItem(`project-store-videos`) || "{}"),
+      );
+      // Reset flow state for new project
+      resetFlow();
+    } else {
+      setStoredVideosMap(
+        JSON.parse(localStorage.getItem("segmentVideos") || "{}"),
+      );
+      resetFlow();
+    }
+  };
+
+  // Listen for storage events (from other windows/tabs)
+  useEffect(() => {
+    window.addEventListener("storage", handleProjectChange);
+    return () => window.removeEventListener("storage", handleProjectChange);
   }, []);
+
+
 
   useEffect(() => {
     if (window?.electronAPI?.res?.timeline?.add) {
@@ -142,6 +167,7 @@ function ChatWidget() {
 
   // Load project data when selectedProject changes
   useEffect(() => {
+    console.log('selectedProject changed:', selectedProject);
     if (selectedProject) {
       loadProjectData();
     } else {
@@ -911,6 +937,8 @@ function ChatWidget() {
         onSend={() => handleStepClick(0)}
         // Auth props
         onCreateProject={openCreateModal}
+        // Project selection callback
+        onProjectSelect={handleProjectSelect}
       />
 
       {/* Character Generator Modal */}

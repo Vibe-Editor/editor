@@ -15,7 +15,8 @@ function ChatHeader({
   showUserMenu, 
   setShowUserMenu, 
   logout, 
-  onClose 
+  onClose,
+  onProjectSelect
 }) {
   return (
     <div className='flex justify-between items-center p-3 border-b border-gray-800 sticky top-0 relative'>
@@ -47,7 +48,7 @@ function ChatHeader({
             {showProjectHistory && (
               <div className='absolute left-48 top-10 z-[10002]'>
                 <ProjectHistoryDropdown
-                  onSelect={() => setShowProjectHistory(false)}
+                  onSelect={onProjectSelect}
                 />
               </div>
             )}

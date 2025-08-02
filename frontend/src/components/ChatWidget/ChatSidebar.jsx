@@ -29,6 +29,7 @@ function ChatSidebar({
   setShowUserMenu,
   logout,
   onClose,
+  onProjectSelect,
   // Project props
   selectedProject,
   // Step props
@@ -79,20 +80,21 @@ function ChatSidebar({
       } z-[10000] flex flex-col shadow-2xl`}
     >
       {/* Header */}
-      <ChatHeader
-        showMenu={showMenu}
-        setShowMenu={setShowMenu}
-        isAuthenticated={isAuthenticated}
-        showProjectHistory={showProjectHistory}
-        setShowProjectHistory={setShowProjectHistory}
-        setShowCharacterGenerator={setShowCharacterGenerator}
-        openCreateModal={openCreateModal}
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        onClose={onClose}
-      />
+              <ChatHeader
+          showMenu={showMenu}
+          setShowMenu={setShowMenu}
+          isAuthenticated={isAuthenticated}
+          showProjectHistory={showProjectHistory}
+          setShowProjectHistory={setShowProjectHistory}
+          setShowCharacterGenerator={setShowCharacterGenerator}
+          openCreateModal={openCreateModal}
+          user={user}
+          showUserMenu={showUserMenu}
+          setShowUserMenu={setShowUserMenu}
+          logout={logout}
+          onClose={onClose}
+          onProjectSelect={onProjectSelect}
+        />
       
       {/* Project banner */}
       {isAuthenticated && <ProjectBanner selectedProject={selectedProject} />}
