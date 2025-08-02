@@ -14,6 +14,39 @@ import TimelineActions from './TimelineActions';
 import AuthMessages from './AuthMessages';
 import ChatInput from './ChatInput';
 
+// Custom styles for scrollbar and animation
+const customStyles = `
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(50px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 100, 100, 0.4);
+  }
+  
+  /* Prevent horizontal scrolling when sidebar is offscreen */
+  html, body {
+    overflow-x: hidden;
+  }
+`;
+
 function ChatSidebar({
   open,
   // Header props
@@ -74,11 +107,16 @@ function ChatSidebar({
   onCreateProject
 }) {
   return (
-    <div
-      className={`glass-container fixed rounded-2xl mb-4 mr-4 bottom-0 right-0 h-[90vh] sm:h-[87vh] w-[90vw] sm:w-[360px] md:w-[25vw] max-w-[600px] text-white transform transition-transform duration-500 ${
-        open ? "translate-x-0" : "translate-x-full"
-      } z-[10000] flex flex-col shadow-2xl`}
-    >
+    <>
+      <style>{customStyles}</style>
+      <div
+        className={`backdrop-blur-xl bg-white/20 dark:bg-gray-800/30 border border-white/30 dark:border-gray-700/40 shadow-lg rounded-2xl transition-all duration-300 ease-out fixed rounded-2xl mb-4 mr-4 bottom-0 right-0 h-[90vh] sm:h-[87vh] w-[90vw] sm:w-[360px] md:w-[25vw] max-w-[600px] text-white transform transition-transform duration-500 ${
+          open ? "translate-x-0" : "translate-x-full"
+        } z-[10000] flex flex-col shadow-2xl`}
+        style={{
+          animation: 'slideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
+        }}
+      >
       {/* Header */}
               <ChatHeader
           showMenu={showMenu}
@@ -115,7 +153,7 @@ function ChatSidebar({
         />
 
         {/* Content Area */}
-        <div className='flex-1 overflow-y-auto p-4'>
+        <div className='flex-1 overflow-y-auto p-4 custom-scrollbar'>
           <ErrorDisplay error={error} onClearError={() => setError(null)} />
           <LoadingDisplay loading={loading} />
           
@@ -188,6 +226,7 @@ function ChatSidebar({
         />
       </div>
     </div>
+    </>
   );
 }
 

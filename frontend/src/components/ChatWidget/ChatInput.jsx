@@ -37,13 +37,13 @@ function ChatInput({
             }
           }}
           placeholder='Start Creating...'
-          className='w-full glass-input text-sm text-white pl-4 pr-12 py-3 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500'
+          className='w-full bg-white/15 dark:bg-gray-700/40 backdrop-blur-sm border border-white/25 dark:border-gray-600/40 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 placeholder-gray-500 dark:placeholder-gray-400 text-sm text-white pl-4 pr-12 py-3 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500'
           disabled={loading}
         />
 
         <button
           type='button'
-          className={`absolute top-1/2 right-3 -translate-y-1/2 send-btn flex items-center justify-center rounded-full h-9 w-9 transition-opacity duration-150 ${
+          className={`absolute top-1/2 right-3 -translate-y-1/2 bg-gradient-to-br from-indigo-500/80 via-purple-500/80 to-pink-500/80 backdrop-blur-sm border border-white/30 dark:border-gray-600/40 shadow-md flex items-center justify-center rounded-full h-9 w-9 transition-opacity duration-150 ${
             loading || !prompt.trim() ? "opacity-40 cursor-not-allowed" : "hover:scale-105 active:scale-95"
           }`}
           disabled={loading || !prompt.trim()}

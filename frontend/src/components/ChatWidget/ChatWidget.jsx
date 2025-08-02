@@ -9,7 +9,6 @@ import { segmentationApi } from "../../services/segmentationapi";
 import { chatApi } from "../../services/chat";
 import { s3Api } from "../../services/s3";
 import { projectApi } from "../../services/project";
-import "../../styles/chatwidget.css";
 import React from "react";
 
 // Import extracted components
