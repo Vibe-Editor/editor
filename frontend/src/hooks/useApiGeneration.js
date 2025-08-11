@@ -1,0 +1,449 @@
+import { useState } from "react";
+import { webInfoApi } from "../services/web-info";
+import { conceptWriterApi } from "../services/concept-writer";
+import { segmentationApi } from "../services/segmentationapi";
+import { chatApi } from "../services/chat";
+import { s3Api } from "../services/s3";
+import {
+  getTextCreditCost,
+  getImageCreditCost,
+  getVideoCreditCost,
+  formatCreditDeduction,
+} from "../lib/pricing";
+
+export const useApiGeneration = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [generationProgress, setGenerationProgress] = useState({});
+
+  const runConceptWriter = async ({
+    prompt,
+    selectedProject,
+    setConcepts,
+    updateStepStatus,
+    setCurrentStep,
+    showCreditDeduction,
+    showRequestFailed,
+  }) => {
+    if (!prompt.trim()) {
+      setError("Please enter a prompt first");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    updateStepStatus(0, "loading");
+
+    try {
+      console.log("Starting pipeline with web-info...");
+      const webInfoResult = await webInfoApi.processWebInfo(
+        prompt,
+        selectedProject?.id,
+      );
+      console.log("Web-info response:", webInfoResult);
+
+      console.log("Calling concept-writer...");
+      const webInfoContent = webInfoResult.choices[0].message.content;
+      const conceptsResult = await conceptWriterApi.generateConcepts(
+        prompt,
+        webInfoContent,
+        selectedProject?.id,
+      );
+
+      console.log("Concept-writer response:", conceptsResult);
+
+      // Show combined credit deduction for both API calls (web-info + concept generation)
+      const webInfoCredits = getTextCreditCost("web-info");
+      const conceptCredits = getTextCreditCost("concept generator");
+      const totalCredits = webInfoCredits + conceptCredits;
+      const message = formatCreditDeduction(
+        "Concept Writer Process",
+        totalCredits,
+      );
+
+      showCreditDeduction(message);
+
+      setConcepts(conceptsResult.concepts);
+      updateStepStatus(0, "done");
+      setCurrentStep(1);
+    } catch (error) {
+      console.error("Error in concept writer:", error);
+      showRequestFailed("Concept Generation");
+      setError(
+        error.message || "Failed to generate concepts. Please try again.",
+      );
+      updateStepStatus(0, "pending");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runScriptGeneration = async ({
+    prompt,
+    selectedConcept,
+    selectedProject,
+    setScripts,
+    updateStepStatus,
+    setCurrentStep,
+    showCreditDeduction,
+    showRequestFailed,
+  }) => {
+    if (!selectedConcept) {
+      setError("Please select a concept first");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    updateStepStatus(2, "loading");
+
+    try {
+      const [res1, res2] = await Promise.all([
+        segmentationApi.getSegmentation({
+          prompt,
+          concept: selectedConcept.title,
+          negative_prompt: "",
+          project_id: selectedProject?.id,
+        }),
+        segmentationApi.getSegmentation({
+          prompt,
+          concept: selectedConcept.title,
+          negative_prompt: "",
+          project_id: selectedProject?.id,
+        }),
+      ]);
+
+      // Show credit deduction after successful API responses
+      showCreditDeduction("Script Generation", null, 2);
+      setScripts({ response1: res1, response2: res2 });
+      updateStepStatus(2, "done");
+      setCurrentStep(3);
+    } catch (error) {
+      console.error("Error in script generation:", error);
+      showRequestFailed("Script Generation");
+      setError(
+        error.message || "Failed to generate scripts. Please try again.",
+      );
+      updateStepStatus(2, "pending");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runImageGeneration = async ({
+    selectedScript,
+    selectedProject,
+    selectedImageModel,
+    setGeneratedImages,
+    setSelectedScript,
+    updateStepStatus,
+    setCurrentStep,
+    showCreditDeduction,
+    showRequestFailed,
+  }) => {
+    if (!selectedScript) {
+      setError("Please select a script first");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    updateStepStatus(4, "loading");
+    setGenerationProgress({});
+
+    try {
+      const segments = selectedScript.segments;
+      const artStyle = selectedScript.artStyle || "";
+      const imagesMap = {};
+
+      // Create parallel promises for all segments
+      const imagePromises = segments.map(async (segment, index) => {
+        setGenerationProgress((prev) => ({
+          ...prev,
+          [segment.id]: {
+            type: "image",
+            status: "generating",
+            index: index + 1,
+            total: segments.length,
+          },
+        }));
+
+        try {
+          const result = await chatApi.generateImage({
+            visual_prompt: segment.visual,
+            art_style: artStyle,
+            uuid: segment.id,
+            project_id: selectedProject?.id,
+            model: selectedImageModel,
+          });
+
+          if (result.s3_key) {
+            const imageUrl = await s3Api.downloadImage(result.s3_key);
+            imagesMap[segment.id] = imageUrl;
+            segment.s3Key = result.s3_key;
+
+            setGenerationProgress((prev) => ({
+              ...prev,
+              [segment.id]: {
+                type: "image",
+                status: "completed",
+                index: index + 1,
+                total: segments.length,
+              },
+            }));
+
+            return { segmentId: segment.id, imageUrl, s3Key: result.s3_key };
+          } else {
+            setGenerationProgress((prev) => ({
+              ...prev,
+              [segment.id]: {
+                type: "image",
+                status: "error",
+                index: index + 1,
+                total: segments.length,
+                error: "No image key returned from API",
+              },
+            }));
+            return null;
+          }
+        } catch (err) {
+          console.error(
+            `Error generating image for segment ${segment.id}:`,
+            err,
+          );
+          setGenerationProgress((prev) => ({
+            ...prev,
+            [segment.id]: {
+              type: "image",
+              status: "error",
+              index: index + 1,
+              total: segments.length,
+              error: err.message,
+            },
+          }));
+          return null;
+        }
+      });
+
+      // Wait for all image generation requests to complete
+      await Promise.allSettled(imagePromises);
+
+      // Show credit deduction after successful generation for all segments
+      const totalSegments = segments.length;
+      showCreditDeduction(
+        "Image Generation",
+        selectedImageModel,
+        totalSegments,
+      );
+
+      // Update segments with s3Key for video generation
+      const segmentsWithS3Key = segments.map((segment) => ({
+        ...segment,
+        s3Key: segment.s3Key,
+      }));
+
+      setGeneratedImages(imagesMap);
+
+      // Update selectedScript with the segments that now have s3Key
+      setSelectedScript((prev) => ({
+        ...prev,
+        segments: segmentsWithS3Key,
+      }));
+
+      updateStepStatus(4, "done");
+      setCurrentStep(5);
+    } catch (error) {
+      console.error("Error in image generation:", error);
+      showRequestFailed("Image Generation");
+      setError(error.message || "Failed to generate images. Please try again.");
+      updateStepStatus(4, "pending");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runVideoGeneration = async ({
+    selectedScript,
+    selectedProject,
+    selectedVideoModel,
+    generatedImages,
+    setGeneratedVideos,
+    updateStepStatus,
+    showCreditDeduction,
+    showRequestFailed,
+  }) => {
+    // Check if we have any images available from the API response
+    if (Object.keys(generatedImages).length === 0) {
+      setError("Please generate images first");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    updateStepStatus(5, "loading");
+    setGenerationProgress({});
+
+    try {
+      const segments = selectedScript.segments;
+      const artStyle = selectedScript.artStyle || "";
+      const videosMap = {};
+
+      // Count valid segments (those with images)
+      const validSegments = segments.filter((segment) => {
+        const segmentIdVariants = [
+          segment.id,
+          `seg-${segment.id}`,
+          segment.segmentId,
+          segment.uuid,
+        ];
+        return segmentIdVariants.some((id) => generatedImages[id]);
+      });
+
+      // Create parallel promises for all valid segments
+      const videoPromises = validSegments.map(async (segment, index) => {
+        // Check if this segment has an image in the generatedImages map
+        // Try different segment ID formats to match with generatedImages
+        const segmentIdVariants = [
+          segment.id,
+          `seg-${segment.id}`,
+          segment.segmentId,
+          segment.uuid,
+        ];
+
+        const matchingImageKey = segmentIdVariants.find(
+          (id) => generatedImages[id],
+        );
+        if (!matchingImageKey) {
+          console.log(
+            `Skipping segment ${segment.id} - no image available. Tried IDs:`,
+            segmentIdVariants,
+          );
+          return null;
+        }
+
+        setGenerationProgress((prev) => ({
+          ...prev,
+          [segment.id]: {
+            type: "video",
+            status: "generating",
+            index: index + 1,
+            total: validSegments.length,
+          },
+        }));
+
+        try {
+          // Extract s3Key from the image URL in generatedImages
+          const imageUrl = generatedImages[matchingImageKey];
+          let imageS3Key = null;
+
+          if (imageUrl && imageUrl.includes("cloudfront.net/")) {
+            // Extract s3Key from CloudFront URL
+            const urlParts = imageUrl.split("cloudfront.net/");
+            if (urlParts.length > 1) {
+              imageS3Key = urlParts[1];
+            }
+          }
+
+          console.log(
+            `Generating video for segment ${segment.id} with imageS3Key: ${imageS3Key}`,
+          );
+          const result = await chatApi.generateVideo({
+            animation_prompt: segment.animation || segment.visual,
+            art_style: artStyle,
+            image_s3_key: imageS3Key,
+            uuid: segment.id,
+            project_id: selectedProject?.id,
+            model: selectedVideoModel,
+          });
+
+          console.log(
+            `Video generation result for segment ${segment.id}:`,
+            result,
+          );
+
+          if (result.s3_key) {
+            const videoUrl = await s3Api.downloadVideo(result.s3_key);
+            videosMap[segment.id] = videoUrl;
+
+            setGenerationProgress((prev) => ({
+              ...prev,
+              [segment.id]: {
+                type: "video",
+                status: "completed",
+                index: index + 1,
+                total: validSegments.length,
+              },
+            }));
+
+            return { segmentId: segment.id, videoUrl };
+          } else {
+            console.warn(`No s3_key returned for segment ${segment.id}`);
+            setGenerationProgress((prev) => ({
+              ...prev,
+              [segment.id]: {
+                type: "video",
+                status: "error",
+                index: index + 1,
+                total: validSegments.length,
+                error: "No video key returned from API",
+              },
+            }));
+            return null;
+          }
+        } catch (err) {
+          console.error(
+            `Error generating video for segment ${segment.id}:`,
+            err,
+          );
+          setGenerationProgress((prev) => ({
+            ...prev,
+            [segment.id]: {
+              type: "video",
+              status: "error",
+              index: index + 1,
+              total: validSegments.length,
+              error: err.message,
+            },
+          }));
+          return null;
+        }
+      });
+
+      // Wait for all video generation requests to complete
+      await Promise.allSettled(videoPromises);
+
+      // Show credit deduction after successful generation for valid segments
+      const totalValidSegments = validSegments.length;
+      if (totalValidSegments > 0) {
+        showCreditDeduction(
+          "Video Generation",
+          selectedVideoModel,
+          totalValidSegments,
+        );
+      }
+
+      setGeneratedVideos(videosMap);
+
+      updateStepStatus(5, "done");
+    } catch (error) {
+      console.error("Error in video generation:", error);
+      showRequestFailed("Video Generation");
+      setError(error.message || "Failed to generate videos. Please try again.");
+      updateStepStatus(5, "pending");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    loading,
+    error,
+    setError,
+    generationProgress,
+    setGenerationProgress,
+    runConceptWriter,
+    runScriptGeneration,
+    runImageGeneration,
+    runVideoGeneration,
+  };
+};
