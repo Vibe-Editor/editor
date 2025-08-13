@@ -341,8 +341,8 @@ function ChatWidgetSidebar({ open, setOpen }) {
       {/* Sliding sidebar */}
       <div
         className={` border-gray-600/40 shadow-lg rounded-3xl transition-transform duration-500 ease-out fixed text-white backdrop-blur-xl ${
-          open ? "translate-x-0 right-[6px]" : "translate-x-full -right-full"
-        } z-[10000] flex flex-col shadow-2xl w-[calc(30%-10px)] h-[calc(110vh-200px)] top-[102px] bg-[linear-gradient(179.99deg,rgba(233,232,235,0.14)_0.01%,rgba(24,25,28,0.2)_79.99%)]`}
+          open ? "translate-x-0 right-[5px]" : "translate-x-full -right-full"
+        } z-[10000] flex flex-col shadow-2xl w-[calc(30%-8px)] h-[calc(111vh-200px)] top-[102px] bg-[linear-gradient(179.99deg,rgba(233,232,235,0.14)_0.01%,rgba(24,25,28,0.2)_79.99%)]`}
       >
         {/* Header */}
         <Sidebar

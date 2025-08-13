@@ -167,7 +167,7 @@ export default function StepList({
                   isCurrent
                     ? "border-blue-500 bg-blue-900/20" 
                     : isDone 
-                    ? "border-green-500/50 bg-green-900/10" 
+                    ? "border-green-500/50 bg-[#94E7ED26]" 
                     : "border-gray-700/30"
                 } ${disabled && !isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                 onClick={() => {
