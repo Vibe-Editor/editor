@@ -849,30 +849,52 @@ export class App extends LitElement {
           id: string,
           icon: string,
           tooltip: string,
-          layout: 'sidebar' | 'chat' | 'none'
+          layout: 'sidebar' | 'chat' | 'none',
+          customColor?: string
         ) => {
           if (document.getElementById(id)) return; // avoid duplicates
           const btn = document.createElement('button');
           btn.id = id;
-          btn.innerHTML = `<span class="material-symbols-outlined" style="color:#000000;font-size:18px;">${icon}</span>`;
+          btn.innerHTML = `<span class="material-symbols-outlined" style="color:#ffffff;font-size:16px;font-weight:500;">${icon}</span>`;
           btn.title = tooltip;
           btn.style.cssText = `
-            background-color: #FFFFFF;
-            color: #000000;
+            background: ${customColor || 'linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%)'};
             border: none;
-            padding: 6px 8px;
             border-radius: 6px;
+            margin-top: 2px;
             cursor: pointer;
+            padding: 6px;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
             font-family: inherit;
           `;
+
+          // Add hover effects
+          btn.onmouseenter = () => {
+            btn.style.transform = 'translateY(-1px) scale(1.05)';
+            btn.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+            btn.style.filter = 'brightness(1.2)';
+          };
+          btn.onmouseleave = () => {
+            btn.style.transform = 'translateY(0) scale(1)';
+            btn.style.boxShadow = '0 3px 8px rgba(0,0,0,0.2)';
+            btn.style.filter = 'brightness(1)';
+          };
           btn.onclick = () => applyLayout(layout);
           layoutContainer!.appendChild(btn);
         };
 
-        // Create the three layout buttons
-        addLayoutBtn('layout-sidebar-btn', 'view_sidebar', 'Sidebar Layout', 'sidebar');
-        addLayoutBtn('layout-chat-btn', 'chat', 'Chat Layout', 'chat');
-        addLayoutBtn('layout-none-btn', 'close_fullscreen', 'Clean Layout', 'none');
+        // Create the three compact layout buttons with consistent dark backgrounds
+        addLayoutBtn('layout-sidebar-btn', 'dock_to_left', 'Show Sidebar Panel', 'sidebar', 'linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%)');
+        addLayoutBtn('layout-chat-btn', 'forum', 'Show Chat Widget', 'chat', 'linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%)');
+        addLayoutBtn('layout-none-btn', 'fullscreen', 'Clean Workspace', 'none', 'linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%)');
 
         // Expose right panel functions globally for React components to use
         (window as any).toggleRightPanel = (isOpen: boolean) => {

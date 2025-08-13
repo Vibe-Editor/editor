@@ -268,7 +268,7 @@ function ChatWidgetSidebar({ open, setOpen }) {
     if (chatFlow.addingTimeline) return;
 
     chatFlow.setAddingTimeline(true);
-    const success = await timeline.sendVideosToTimeline(
+    await timeline.sendVideosToTimeline(
       chatFlow.selectedScript,
       combinedVideosMap,
       chatFlow.setError,
@@ -281,7 +281,7 @@ function ChatWidgetSidebar({ open, setOpen }) {
       if (chatFlow.addingTimeline) return;
 
       chatFlow.setAddingTimeline(true);
-      const success = await timeline.addSingleVideoToTimeline(
+      await timeline.addSingleVideoToTimeline(
         segmentId,
         combinedVideosMap,
         chatFlow.setError,
@@ -293,13 +293,17 @@ function ChatWidgetSidebar({ open, setOpen }) {
 
   // Modal handlers
   const handleImageClick = useCallback((imageUrl) => {
+    console.log('handleImageClick called with:', imageUrl);
     setModalImageUrl(imageUrl);
     setShowImageModal(true);
+    console.log('Modal state set - showImageModal: true, modalImageUrl:', imageUrl);
   }, []);
 
   const handleVideoClick = useCallback((videoUrl) => {
+    console.log('handleVideoClick called with:', videoUrl);
     setModalVideoUrl(videoUrl);
     setShowVideoModal(true);
+    console.log('Modal state set - showVideoModal: true, modalVideoUrl:', videoUrl);
   }, []);
 
   const closeImageModal = useCallback(() => {
@@ -319,7 +323,7 @@ function ChatWidgetSidebar({ open, setOpen }) {
   const SelectedProjectBanner = () => {
     if (!chatFlow.selectedProject) return null;
     return (
-      <div className='px-4 py-2 bg-blue-900 text-blue-100 text-sm border-b border-blue-800'>
+      <div className='px-4 py-2 bg-blue-900/30 text-blue-100 text-sm border-b border-blue-800/30'>
         Working on:{" "}
         <span className='font-semibold'>{chatFlow.selectedProject.name}</span>
       </div>
@@ -336,17 +340,9 @@ function ChatWidgetSidebar({ open, setOpen }) {
     >
       {/* Sliding sidebar */}
       <div
-
-        className={`bg-gray-800/95 backdrop-blur-sm border border-gray-600/40 shadow-lg rounded-lg transition-all duration-300 ease-out fixed bottom-4 right-4 text-white transform transition-transform duration-500 ${
-
-          open ? "translate-x-0" : "translate-x-full"
-        } z-[10000] flex flex-col shadow-2xl`}
-        style={{
-          width: 'calc(30% - 20px)',
-          height: 'calc(100vh - 200px)',
-          right: open ? '10px' : '-100%',
-          top: '110px'
-        }}
+        className={` border-gray-600/40 shadow-lg rounded-3xl transition-transform duration-500 ease-out fixed text-white backdrop-blur-xl ${
+          open ? "translate-x-0 right-[6px]" : "translate-x-full -right-full"
+        } z-[10000] flex flex-col shadow-2xl w-[calc(30%-10px)] h-[calc(110vh-200px)] top-[102px] bg-[linear-gradient(179.99deg,rgba(233,232,235,0.14)_0.01%,rgba(24,25,28,0.2)_79.99%)]`}
       >
         {/* Header */}
         <Sidebar
@@ -367,14 +363,14 @@ function ChatWidgetSidebar({ open, setOpen }) {
 
         {/* Credit Widget Section */}
         {isAuthenticated && (
-          <div className='px-3 py-2 bg-gray-900/50 border-b border-gray-800'>
+          <div className='px-3 py-2 bg-transparent border-b border-gray-800/30'>
             <CreditWidget />
           </div>
         )}
 
         {/* Credit Deduction Notification */}
         {chatFlow.creditDeductionMessage && (
-          <div className='px-3 py-2 bg-green-900/50 border-b border-green-800'>
+          <div className='px-3 py-2 bg-green-900/30 border-b border-green-800/30'>
             <div className='flex items-center gap-2 text-green-200'>
               <span>💰</span>
               <span className='text-xs'>{chatFlow.creditDeductionMessage}</span>
@@ -404,7 +400,7 @@ function ChatWidgetSidebar({ open, setOpen }) {
           {/* Content Area */}
           <div className='flex-1 overflow-y-auto p-4'>
             {chatFlow.error && (
-              <div className='mb-4 p-3 bg-red-900 text-red-100 rounded text-sm'>
+              <div className='mb-4 p-3 bg-red-900/30 text-red-100 rounded text-sm'>
                 {chatFlow.error}
                 <button
                   onClick={() => chatFlow.setError(null)}
@@ -454,35 +450,40 @@ function ChatWidgetSidebar({ open, setOpen }) {
               currentStep={chatFlow.currentStep}
             />
 
-            {/* Generated Images */}
-            <GeneratedImages
-              generatedImages={chatFlow.generatedImages}
-              currentStep={chatFlow.currentStep}
-              onImageClick={handleImageClick}
-            />
+            {/* Generated Images - Only show on step 4 (Image Generation) and after */}
+            {chatFlow.currentStep >= 4 && (
+              <GeneratedImages
+                generatedImages={chatFlow.generatedImages}
+                onImageClick={handleImageClick}
+              />
+            )}
 
-            {/* Generated Videos */}
-            <GeneratedVideos
-              combinedVideosMap={combinedVideosMap}
-              currentStep={chatFlow.currentStep}
-              onVideoClick={handleVideoClick}
-              onAddSingleVideo={addSingleVideoToTimeline}
-            />
+            {/* Generated Videos - Only show on step 5 (Video Generation) and after */}
+            {chatFlow.currentStep >= 5 && (
+              <GeneratedVideos
+                combinedVideosMap={combinedVideosMap}
+                currentStep={chatFlow.currentStep}
+                onVideoClick={handleVideoClick}
+                onAddSingleVideo={addSingleVideoToTimeline}
+              />
+            )}
 
-            {/* Generated Content Summary */}
-            <ContentSummary
-              selectedScript={chatFlow.selectedScript}
-              currentStep={chatFlow.currentStep}
-              generatedImages={chatFlow.generatedImages}
-              generatedVideos={chatFlow.generatedVideos}
-            />
+            {/* Generated Content Summary - Only show when we have generated content (step 4+) */}
+            {chatFlow.currentStep >= 4 && (
+              <ContentSummary
+                selectedScript={chatFlow.selectedScript}
+                currentStep={chatFlow.currentStep}
+                generatedImages={chatFlow.generatedImages}
+                generatedVideos={chatFlow.generatedVideos}
+              />
+            )}
 
-            {/* Timeline Button */}
-            <TimelineButton
+            {/* Timeline Button - COMMENTED OUT */}
+            {/* <TimelineButton
               canSendTimeline={canSendTimeline}
               addingTimeline={chatFlow.addingTimeline}
               onSendToTimeline={sendVideosToTimeline}
-            />
+            /> */}
 
             {/* Auth/Project Messages */}
             <AuthMessages
@@ -501,6 +502,9 @@ function ChatWidgetSidebar({ open, setOpen }) {
             loading={chatFlow.loading}
             currentStep={chatFlow.currentStep}
             handleStepClick={handleStepClick}
+            canSendTimeline={canSendTimeline}
+            addingTimeline={chatFlow.addingTimeline}
+            onSendToTimeline={sendVideosToTimeline}
           />
         </div>
       </div>

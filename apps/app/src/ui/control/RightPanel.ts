@@ -23,8 +23,8 @@ export class RightPanel extends LitElement {
         >
           <!-- Right panel content -->
           <div
-            class="h-100 w-100"
-            style="background: #181a1c;"
+            class="h-100 w-100 rounded-3xl"
+            style="background:#0F1012;"
           >
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import ModelSelector from "../ModelSelector";
 
@@ -36,6 +36,28 @@ const Modals = ({
   onCreateProject,
   onCloseCreateModal,
 }) => {
+  // Handle keyboard events for closing modals
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        if (showImageModal) {
+          onCloseImageModal();
+        } else if (showVideoModal) {
+          onCloseVideoModal();
+        } else if (showRedoModal) {
+          onCloseRedoModal();
+        } else if (createModalOpen) {
+          onCloseCreateModal();
+        }
+      }
+    };
+
+    if (showImageModal || showVideoModal || showRedoModal || createModalOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showImageModal, showVideoModal, showRedoModal, createModalOpen, onCloseImageModal, onCloseVideoModal, onCloseRedoModal, onCloseCreateModal]);
+
   return (
     <>
       {/* Image preview modal */}
@@ -43,21 +65,26 @@ const Modals = ({
         modalImageUrl &&
         createPortal(
           <div
-            className='fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[10003]'
+            className='fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[99999]'
             onClick={onCloseImageModal}
+            style={{ zIndex: 99999 }}
           >
-            <img
-              src={modalImageUrl}
-              alt='Preview'
-              className='max-w-full max-h-full rounded shadow-lg'
-              onClick={(e) => e.stopPropagation()}
-            />
-            <button
-              className='absolute top-4 right-4 text-white text-2xl'
-              onClick={onCloseImageModal}
-            >
-              ✕
-            </button>
+            <div className='relative max-w-[90vw] max-h-[90vh] flex items-center justify-center'>
+              <img
+                src={modalImageUrl}
+                alt='Preview'
+                className='max-w-full max-h-full rounded shadow-2xl object-contain'
+                onClick={(e) => e.stopPropagation()}
+                style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+              />
+              <button
+                className='absolute top-4 right-4 text-white text-3xl bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70 transition-all'
+                onClick={onCloseImageModal}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
           </div>,
           document.body,
         )}
@@ -67,22 +94,28 @@ const Modals = ({
         modalVideoUrl &&
         createPortal(
           <div
-            className='fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[10003]'
+            className='fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[99999]'
             onClick={onCloseVideoModal}
+            style={{ zIndex: 99999 }}
           >
-            <video
-              src={modalVideoUrl}
-              controls
-              autoPlay
-              className='max-w-full max-h-full rounded shadow-lg'
-              onClick={(e) => e.stopPropagation()}
-            />
-            <button
-              className='absolute top-4 right-4 text-white text-2xl'
-              onClick={onCloseVideoModal}
-            >
-              ✕
-            </button>
+            <div className='relative max-w-[90vw] max-h-[90vh] flex items-center justify-center'>
+              <video
+                src={modalVideoUrl}
+                controls
+                autoPlay
+                loop
+                className='max-w-full max-h-full rounded shadow-2xl'
+                onClick={(e) => e.stopPropagation()}
+                style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+              />
+              <button
+                className='absolute top-4 right-4 text-white text-3xl bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70 transition-all'
+                onClick={onCloseVideoModal}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
           </div>,
           document.body,
         )}
