@@ -16,6 +16,7 @@
     "bundle:prod:src": "webpack --mode=production",
     "build:win": "npm run bundle:prod:src && electron-builder build --win --x64",
     "build:mac": "npm run bundle:prod:src && electron-builder build --mac",
+    "build:mac:signed": "./build/build-signed.sh",
     "build": "npm run build:win"
   },
   "repository": {
@@ -56,7 +57,14 @@
       "category": "public.app-category.video",
       "darkModeSupport": true,
       "hardenedRuntime": true,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "type": "distribution",
+      "identity": "Usuals Inc (UFH2GL2K22)",
+      "notarize": {
+        "teamId": "UFH2GL2K22"
+      }
     },
     "dmg": {
       "contents": [
@@ -74,7 +82,9 @@
       "window": {
         "width": 540,
         "height": 380
-      }
+      },
+      "sign": false,
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "win": {
       "target": [
@@ -96,6 +106,7 @@
       "buildResources": "assets",
       "output": "dist"
     },
+    "afterSign": "build/afterSign.js",
     "files": [
       "main/**/*",
       "assets/**/*",
