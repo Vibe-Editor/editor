@@ -113,6 +113,7 @@
       "assets/**/*",
       "frontend/dist/**/*",
       "apps/**/*",
+      "bin/**/*",
       "package.json"
     ],
     "asarUnpack": [

@@ -25,7 +25,12 @@ export const validateFFmpeg = async () => {
     //   return 0;
     // }
 
-    fs.chmodSync(FFMPEG_PATH, 0o755);
+    try {
+      fs.chmodSync(FFMPEG_PATH, 0o755);
+    } catch (chmodError: any) {
+      log.warn("Could not set ffmpeg permissions:", chmodError.message);
+      // Continue anyway - the file might already have correct permissions
+    }
     ffmpeg.setFfmpegPath(FFMPEG_PATH);
 
     log.info("FFMPEG downloaded successfully");
@@ -42,7 +47,12 @@ export const validateFFprobe = async () => {
     //   return 0;
     // }
 
-    fs.chmodSync(FFPROBE_PATH, 0o755);
+    try {
+      fs.chmodSync(FFPROBE_PATH, 0o755);
+    } catch (chmodError: any) {
+      log.warn("Could not set ffprobe permissions:", chmodError.message);
+      // Continue anyway - the file might already have correct permissions
+    }
     ffmpeg.setFfprobePath(FFPROBE_PATH);
 
     log.info("FFPROBE downloaded successfully.");
@@ -79,7 +89,12 @@ export const downloadFfmpeg = (binType) => {
     });
     response.on("end", () => {
       log.info(binType + " No more data in response.");
-      fs.chmodSync(downloadPath, 0o755);
+      try {
+        fs.chmodSync(downloadPath, 0o755);
+      } catch (chmodError: any) {
+        log.warn("Could not set " + binType + " permissions:", chmodError.message);
+        // Continue anyway - the file might already have correct permissions
+      }
 
       if (type == "ffmpeg") {
         ffmpeg.setFfmpegPath(downloadPath);
