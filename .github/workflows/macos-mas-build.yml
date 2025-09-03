@@ -28,6 +28,9 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.MAC_APPSTORE_CERT }}
           p12-password: ${{ secrets.MAC_APPSTORE_CERT_PASSWORD }}
+          keychain: signing_temp
+          keychain-password: ${{ secrets.MAC_KEYCHAIN_PASSWORD }}
+          create-keychain: true
 
       - name: Detect installer cert presence
         id: detect_installer
@@ -44,7 +47,9 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.MAC_INSTALLER_CERT }}
           p12-password: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
-          # Let the action create and manage its own temporary keychain
+          keychain: signing_temp
+          keychain-password: ${{ secrets.MAC_KEYCHAIN_PASSWORD }}
+          create-keychain: false
 
       - name: List code signing identities (debug)
         run: |
