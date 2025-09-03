@@ -9,6 +9,9 @@ permissions:
 jobs:
   build-mas:
     runs-on: macos-14
+    env:
+      MAC_INSTALLER_CERT: ${{ secrets.MAC_INSTALLER_CERT }}
+      MAC_INSTALLER_CERT_PASSWORD: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +27,13 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.MAC_APPSTORE_CERT }}
           p12-password: ${{ secrets.MAC_APPSTORE_CERT_PASSWORD }}
+
+      - name: Import Mac Installer Distribution cert (PKG)
+        if: ${{ env.MAC_INSTALLER_CERT != '' && env.MAC_INSTALLER_CERT_PASSWORD != '' }}
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.MAC_INSTALLER_CERT }}
+          p12-password: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
 
       - name: Install dependencies (root)
         run: npm ci
