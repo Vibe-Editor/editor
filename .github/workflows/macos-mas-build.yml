@@ -43,6 +43,8 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.MAC_INSTALLER_CERT }}
           p12-password: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
+          keychain: signing_temp
+          create-keychain: false
 
       - name: List code signing identities (debug)
         run: |
