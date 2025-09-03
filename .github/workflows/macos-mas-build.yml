@@ -44,9 +44,7 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.MAC_INSTALLER_CERT }}
           p12-password: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
-          keychain: ${{ steps.import_dist.outputs.keychain }}
-          keychain-password: ${{ steps.import_dist.outputs.keychain-password }}
-          create-keychain: false
+          # Let the action create and manage its own temporary keychain
 
       - name: List code signing identities (debug)
         run: |
