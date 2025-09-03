@@ -2,6 +2,9 @@ name: macOS MAS Build (App Store)
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
