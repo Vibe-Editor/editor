@@ -18,6 +18,7 @@
     "build:win": "npm run bundle:prod:src && electron-builder build --win --x64",
     "prebuild:mac": "npm --prefix ./frontend ci && npm --prefix ./frontend run build:all-widgets && npm --prefix ./apps/overlay-record ci && npm --prefix ./apps/overlay-record run build && npm --prefix ./packages/render ci && npm --prefix ./packages/render run build && npm run compile:prod",
     "build:mac": "npm run bundle:prod:src && electron-builder build --mac",
+    "build:mas": "npm run bundle:prod:src && electron-builder build --mac mas",
     "build": "npm run build:win"
   },
   "repository": {
@@ -25,8 +26,8 @@
     "url": "https://github.com/cartesiancs/usuals-ai"
   },
   "build": {
-    "productName": "Usuals.ai",
-    "appId": "ai.usuals.app",
+    "productName": "Usuals App",
+    "appId": "ai.usualsapp",
     "asar": true,
     "extraResources": [
       {
@@ -73,6 +74,15 @@
         "^packages/.*/src/.*",
         "^node_modules/(.+)/(test|tests|__tests__)/.*"
       ]
+    },
+    "mas": {
+      "type": "distribution",
+      "category": "public.app-category.video",
+      "entitlements": "electron/entitlements.mas.plist",
+      "entitlementsInherit": "electron/entitlements.mas.inherit.plist",
+      "provisioningProfile": "electron/embedded.provisionprofile",
+      "hardenedRuntime": false,
+      "artifactName": "${productName}-mas-${version}.pkg"
     },
     "afterSign": "electron/notarize.js",
     "afterAllArtifactBuild": "electron/afterAll.js",

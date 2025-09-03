@@ -1,0 +1,58 @@
+name: macOS MAS Build (App Store)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-mas:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20.19
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+
+      - name: Import Apple Distribution cert (MAS)
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.MAC_APPSTORE_CERT }}
+          p12-password: ${{ secrets.MAC_APPSTORE_CERT_PASSWORD }}
+
+      - name: Install dependencies (root)
+        run: npm ci
+
+      - name: Build app assets
+        run: npm run prebuild:mac
+
+      - name: Write provisioning profile
+        run: |
+          echo "${{ secrets.MAC_APPSTORE_PROVISION_PROFILE }}" | base64 --decode > electron/embedded.provisionprofile
+          ls -lah electron/embedded.provisionprofile
+
+      - name: Build MAS pkg
+        run: npm run build:mas
+
+      - name: Upload artifact (MAS pkg)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Usuals-ai-mas
+          path: |
+            dist/*.pkg
+
+      # Optional: Transporter CLI upload (uncomment to enable automatic upload)
+      # - name: Upload to App Store Connect via Transporter
+      #   env:
+      #     APPLE_ID: ${{ secrets.APPLE_ID }}
+      #     APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      #   run: |
+      #     PKG_PATH=$(ls dist/*.pkg | head -n 1)
+      #     xcrun iTMSTransporter -m upload -assetFile "$PKG_PATH" -u "$APPLE_ID" -p "$APPLE_APP_SPECIFIC_PASSWORD" -destination deliver
+
+
