@@ -26,8 +26,8 @@
     "url": "https://github.com/cartesiancs/usuals-ai"
   },
   "build": {
-    "productName": "Usuals.ai",
-    "appId": "ai.usuals.app",
+    "productName": "Usuals App",
+    "appId": "ai.usualsapp",
     "asar": true,
     "extraResources": [
       {
