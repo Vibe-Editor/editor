@@ -28,12 +28,25 @@ jobs:
           p12-file-base64: ${{ secrets.MAC_APPSTORE_CERT }}
           p12-password: ${{ secrets.MAC_APPSTORE_CERT_PASSWORD }}
 
+      - name: Detect installer cert presence
+        id: detect_installer
+        run: |
+          if [ -n "${{ secrets.MAC_INSTALLER_CERT }}" ] && [ -n "${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}" ]; then
+            echo "HAS_INSTALLER_CERT=true" >> $GITHUB_ENV
+          else
+            echo "HAS_INSTALLER_CERT=false" >> $GITHUB_ENV
+          fi
+
       - name: Import Mac Installer Distribution cert (PKG)
-        if: ${{ secrets.MAC_INSTALLER_CERT && secrets.MAC_INSTALLER_CERT_PASSWORD }}
+        if: ${{ env.HAS_INSTALLER_CERT == 'true' }}
         uses: apple-actions/import-codesign-certs@v3
         with:
           p12-file-base64: ${{ secrets.MAC_INSTALLER_CERT }}
           p12-password: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
+
+      - name: List code signing identities (debug)
+        run: |
+          security find-identity -p codesigning -v || true
 
       - name: Install dependencies (root)
         run: npm ci
