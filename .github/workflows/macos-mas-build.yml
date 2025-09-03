@@ -69,12 +69,18 @@ jobs:
       - name: Build MAS pkg
         run: npm run build:mas
 
+      - name: List dist contents (debug)
+        run: |
+          echo "--- dist root ---" && ls -lah dist || true
+          echo "--- dist recursive ---" && find dist -maxdepth 3 -type f -print | sed 's/^/  /'
+
       - name: Upload artifact (MAS pkg)
         uses: actions/upload-artifact@v4
         with:
           name: Usuals-ai-mas
           path: |
             dist/*.pkg
+            dist/**/*.pkg
 
       # Optional: Transporter CLI upload (uncomment to enable automatic upload)
       # - name: Upload to App Store Connect via Transporter
