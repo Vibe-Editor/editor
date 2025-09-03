@@ -27,6 +27,7 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.MAC_APPSTORE_CERT }}
           p12-password: ${{ secrets.MAC_APPSTORE_CERT_PASSWORD }}
+          keychain: signing_mas.keychain
 
       - name: Import Mac Installer Distribution cert (PKG)
         if: ${{ env.MAC_INSTALLER_CERT != '' && env.MAC_INSTALLER_CERT_PASSWORD != '' }}
@@ -34,6 +35,7 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.MAC_INSTALLER_CERT }}
           p12-password: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
+          keychain: signing_installer.keychain
 
       - name: Install dependencies (root)
         run: npm ci
