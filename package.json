@@ -60,6 +60,7 @@
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "minimumSystemVersion": "12.0.0",
       "entitlements": "electron/entitlements.mac.plist",
       "entitlementsInherit": "electron/entitlements.mac.inherit.plist",
       "extendInfo": {
@@ -82,6 +83,7 @@
       "entitlementsInherit": "electron/entitlements.mas.inherit.plist",
       "provisioningProfile": "electron/embedded.provisionprofile",
       "hardenedRuntime": false,
+      "minimumSystemVersion": "12.0.0",
       "artifactName": "${productName}-mas-${version}.pkg"
     },
     "afterSign": "electron/notarize.js",
