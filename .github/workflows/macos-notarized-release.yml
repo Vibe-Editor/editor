@@ -52,6 +52,17 @@ jobs:
           DEBUG: electron-osx-sign*,electron-osx-sign
         run: npm run bundle:prod:src && npx electron-builder build --mac --publish=never
 
+      - name: Notarize DMG (wait)
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -e
+          DMG=$(ls -1 dist/*.dmg | head -n 1)
+          echo "Submitting DMG to notary service: $DMG"
+          xcrun notarytool submit "$DMG" --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+
       - name: Staple DMG (retry and don't fail build)
         run: |
           set -e
