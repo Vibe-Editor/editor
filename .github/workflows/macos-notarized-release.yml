@@ -50,7 +50,7 @@ jobs:
           NOTARYTOOL_ISSUER_ID: ${{ env.NOTARYTOOL_ISSUER_ID }}
           NOTARYTOOL_KEY_FILE: ${{ env.NOTARYTOOL_KEY_FILE }}
           DEBUG: electron-osx-sign*,electron-osx-sign
-        run: npm run build:mac
+        run: npm run bundle:prod:src && npx electron-builder build --mac --publish=never
 
       - name: List artifacts
         run: |
