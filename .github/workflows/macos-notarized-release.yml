@@ -52,6 +52,19 @@ jobs:
           DEBUG: electron-osx-sign*,electron-osx-sign
         run: npm run bundle:prod:src && npx electron-builder build --mac --publish=never
 
+      - name: Staple DMG (retry and don't fail build)
+        run: |
+          set -e
+          DMG=$(ls -1 dist/*.dmg | head -n 1 || true)
+          if [ -z "$DMG" ]; then echo "No DMG found; skipping manual stapling"; exit 0; fi
+          echo "Stapling $DMG"
+          for i in 1 2 3; do
+            if xcrun stapler staple -v "$DMG"; then
+              echo "Stapled on attempt $i"; break; fi
+            echo "Staple attempt $i failed; retrying..."; sleep 5;
+          done
+          echo "Validate DMG:" && xcrun stapler validate "$DMG" || true
+
       - name: List artifacts
         run: |
           ls -lah dist || true
