@@ -144,7 +144,12 @@
       "node_modules/call-bind-apply-helpers/**/*",
       "node_modules/call-bind/**/*",
       "node_modules/dunder-proto/**/*",
-      "node_modules/get-intrinsic/**/*"
+      "node_modules/get-intrinsic/**/*",
+      "node_modules/color-name/**/*",
+      "node_modules/color-convert/**/*",
+      "node_modules/color/**/*",
+      "node_modules/sharp/**/*",
+      "node_modules/@imgly/background-removal-node/**/*"
     ]
   },
   "dependencies": {
