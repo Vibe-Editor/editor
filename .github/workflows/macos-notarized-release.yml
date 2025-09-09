@@ -1,10 +1,13 @@
 name: macOS Notarized Build
 
 on:
-  workflow_dispatch: {}
   push:
+    branches:
+      - '**'
     tags:
       - 'v*'
+  workflow_dispatch: {}
+
 
 permissions:
   contents: write
