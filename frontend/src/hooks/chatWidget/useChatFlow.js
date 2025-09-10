@@ -1006,8 +1006,8 @@ export const useChatFlow = () => {
             console.log(`🎬 Processing video for segment ${segmentId} with S3 key:`, s3Key);
             
             // Convert S3 key to CloudFront URL (using the s3Api service)
-            // For now, we'll use the S3 key directly and let the video component handle URL conversion
-            const videoUrl = s3Key; // The s3Api.downloadVideo will be called by the video component
+            const videoUrl = await s3Api.downloadVideo(s3Key);
+            console.log(`Generated video URL for segment ${segmentId}:`, videoUrl);
             
             // Update generated videos immediately
             setGeneratedVideos((prev) => {
