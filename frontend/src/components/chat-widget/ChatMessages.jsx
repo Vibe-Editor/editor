@@ -253,7 +253,16 @@ const ChatMessages = ({
     
     // Add concept selection component - show if concepts exist OR if we're on step 1+
     if (chatFlow.concepts && chatFlow.concepts.length > 0) {
-      const conceptTimestamp = conceptCompletionMessage ? conceptCompletionMessage.timestamp + 100 : Date.now();
+      // Detect if this is a history project
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
+      // For history projects, ensure concept appears first (before everything else)
+      const conceptTimestamp = conceptCompletionMessage ? 
+        conceptCompletionMessage.timestamp + 100 : 
+        (isHistoryProject ? 
+          Date.now() - 2000 : // History: before everything else
+          Date.now()); // Generation: normal timing
       orderedMessages.push({
         id: "concept-request",
         type: "system",
@@ -297,11 +306,17 @@ const ChatMessages = ({
     if ((chatFlow.scripts && (chatFlow.scripts.response1 || chatFlow.scripts.response2)) || 
         (chatFlow.selectedScript && chatFlow.selectedScript.segments)) {
       
+      // Detect if this is a history project (has selectedScript but no scripts being generated)
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
       // Use the latest relevant completion message or fall back to current time
-      // If no completion message, use a timestamp that ensures script appears after approval messages
+      // For history projects, ensure script appears first (before videos)
       const scriptTimestamp = scriptCompletionMessage ? 
         scriptCompletionMessage.timestamp + 100 : 
-        (scriptApprovalMessage ? scriptApprovalMessage.timestamp + 200 : Date.now() + 100);
+        (isHistoryProject ? 
+          (scriptApprovalMessage ? scriptApprovalMessage.timestamp + 200 : Date.now() - 1000) : // History: before videos
+          (scriptApprovalMessage ? scriptApprovalMessage.timestamp + 200 : Date.now() + 100)); // Generation: after approvals
       
       // Debug logging for script timestamp
       console.log('🔍 Script component timing:', {
@@ -357,7 +372,17 @@ const ChatMessages = ({
     if ((chatFlow.selectedScript && chatFlow.selectedScript.segments) || 
         Object.keys(chatFlow.generatedVideos || {}).length > 0 ||
         Object.keys(chatFlow.storedVideosMap || {}).length > 0) {
-      const videoTimestamp = videoCompletionMessage ? videoCompletionMessage.timestamp + 100 : Date.now();
+      // Detect if this is a history project
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
+      // For history projects, ensure video appears after script component
+      const baseTime = Date.now();
+      const videoTimestamp = videoCompletionMessage ? 
+        videoCompletionMessage.timestamp + 100 : 
+        (isHistoryProject ? 
+          baseTime - 500 : // History: after script (which uses baseTime - 1000)
+          baseTime + 1000); // Generation: after approvals
       orderedMessages.push({
         id: "video-generation",
         type: "system",
@@ -381,7 +406,17 @@ const ChatMessages = ({
       Object.keys(combinedVideosMap || {}).length > 0;
 
     if (canSendTimeline) {
-      const timelineTimestamp = videoCompletionMessage ? videoCompletionMessage.timestamp + 100 : Date.now();
+      // Detect if this is a history project
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
+      // For history projects, ensure timeline appears after video component
+      const baseTime = Date.now();
+      const timelineTimestamp = videoCompletionMessage ? 
+        videoCompletionMessage.timestamp + 100 : 
+        (isHistoryProject ? 
+          baseTime - 200 : // History: after video (which uses baseTime - 500)
+          baseTime + 1500); // Generation: after video (which uses baseTime + 1000)
       orderedMessages.push({
         id: "timeline-integration",
         type: "system",
