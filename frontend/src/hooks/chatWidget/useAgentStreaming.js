@@ -104,8 +104,7 @@ export const useAgentStreaming = () => {
           return updated;
         });
 
-        // Update agent activity
-        setAgentActivity(`Video completed for segment ${segmentId}`);
+        // Video completed - no activity message needed
 
         // 🎯 TRIGGER CHAT SCROLL: Dispatch event to trigger chat scroll to bottom
         setTimeout(() => {
@@ -207,16 +206,7 @@ export const useAgentStreaming = () => {
           if (successCount > 0) {
             console.log(`Detected ${successCount} videos completed`);
 
-            // Add message about video completion
-            setAllUserMessages((prev) => [
-              ...prev,
-              {
-                id: `agent-videos-complete-${Date.now()}`,
-                content: `Video generation complete! ${successCount} videos are ready for timeline.`,
-                timestamp: Date.now(),
-                type: "system",
-              },
-            ]);
+            // Video batch completed - no message needed
 
             // 🎯 TRIGGER CHAT SCROLL: Scroll to bottom to show completion message
             setTimeout(() => {
@@ -328,16 +318,7 @@ export const useAgentStreaming = () => {
         setAgentActivity(completeMessage);
         setStreamingProgress(null); // Clear progress
 
-        // Add completion message to chat
-        setAllUserMessages((prev) => [
-          ...prev,
-          {
-            id: `agent-complete-${Date.now()}`,
-            content: completeMessage,
-            timestamp: Date.now(),
-            type: "system",
-          },
-        ]);
+        // Tool completed - no message needed
 
         // Add small delay to ensure completion message is processed before tool result
         if (handleToolResult) {
@@ -357,16 +338,7 @@ export const useAgentStreaming = () => {
         setStreamingProgress(null);
         setIsStreaming(false);
 
-        // Add final completion message to chat
-        setAllUserMessages((prev) => [
-          ...prev,
-          {
-            id: `agent-task-complete-${Date.now()}`,
-            content: taskCompleteMessage,
-            timestamp: Date.now(),
-            type: "system",
-          },
-        ]);
+        // Task completed - no message needed
 
         // Clear activity after a delay
         setTimeout(() => setAgentActivity(null), 3000);

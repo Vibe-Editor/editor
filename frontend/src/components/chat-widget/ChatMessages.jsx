@@ -298,7 +298,10 @@ const ChatMessages = ({
         (chatFlow.selectedScript && chatFlow.selectedScript.segments)) {
       
       // Use the latest relevant completion message or fall back to current time
-      const scriptTimestamp = scriptCompletionMessage ? scriptCompletionMessage.timestamp + 100 : Date.now();
+      // If no completion message, use a timestamp that ensures script appears after approval messages
+      const scriptTimestamp = scriptCompletionMessage ? 
+        scriptCompletionMessage.timestamp + 100 : 
+        (scriptApprovalMessage ? scriptApprovalMessage.timestamp + 200 : Date.now() + 100);
       
       // Debug logging for script timestamp
       console.log('🔍 Script component timing:', {

@@ -1023,16 +1023,7 @@ export const useChatFlow = () => {
               return updated;
             });
             
-            // Add success message to chat
-            timelineIntegration.setAllUserMessages((prev) => [
-              ...prev,
-              {
-                id: `video-segment-complete-${segmentId}-${Date.now()}`,
-                content: `✅ Video completed for segment ${segmentId}`,
-                timestamp: Date.now(),
-                type: "system",
-              },
-            ]);
+            // Video completed - no message needed
             
             // Trigger scroll to bottom to show new video
             setTimeout(() => {
