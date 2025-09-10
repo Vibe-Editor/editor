@@ -7,6 +7,7 @@ import { IUIStore, uiStore } from "./states/uiStore";
 import "./features/demo/warningDemoEnv";
 import "./ui/control/ControlPanel";
 import "./ui/control/RightPanel";
+import "./ui/modal/VideoEditModal";
 
 @customElement("app-root")
 export class App extends LitElement {
@@ -1280,6 +1281,7 @@ export class App extends LitElement {
         <style id="fontStyles" ref="fontStyles"></style>
 
         <toast-box></toast-box>
+        <video-edit-modal></video-edit-modal>
 
         <warning-demo></warning-demo>
       </body>
