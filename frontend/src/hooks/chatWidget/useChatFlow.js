@@ -829,12 +829,36 @@ export const useChatFlow = () => {
   // Handle streaming tool results (concepts, scripts, videos)
   const handleToolResult = useCallback(
     async (result) => {
-      console.log('🎯 handleToolResult called with:', result);
+      console.log('🎯 handleToolResult called with FULL RESULT:', result);
+      console.log('🔍 Complete result structure:', {
+        resultKeys: Object.keys(result),
+        hasData: !!result.data,
+        dataKeys: result.data ? Object.keys(result.data) : [],
+        hasConcepts: !!(result.data?.concepts),
+        conceptsLength: result.data?.concepts?.length,
+        dataStep: result.data?.step,
+        isDataArray: Array.isArray(result.data),
+        dataLength: Array.isArray(result.data) ? result.data.length : 0,
+        // Check if data is at root level
+        rootConcepts: result.concepts,
+        rootScripts: result.scripts,
+        rootSegments: result.segments,
+        // Check for alternative structures
+        toolName: result.toolName,
+        step: result.step,
+        type: result.type
+      });
       
-      // Handle concept generation results
-      if (result.data && result.data.concepts) {
-        console.log('📝 Setting concepts from streaming result:', result.data.concepts);
-        setConcepts(result.data.concepts);
+      // Handle concept generation results - check multiple possible data structures
+      const concepts = result.data?.concepts || 
+                      result.concepts || 
+                      (result.data?.step === 'concept_generation' && result.data?.concepts) ||
+                      (Array.isArray(result.data) && result.data.length > 0 && result.data[0].title ? result.data : null) ||
+                      (Array.isArray(result) && result.length > 0 && result[0].title ? result : null);
+      
+      if (concepts && Array.isArray(concepts) && concepts.length > 0) {
+        console.log('📝 Setting concepts from streaming result:', concepts);
+        setConcepts(concepts);
         updateStepStatus(0, "done");
         setCurrentStep(1);
         
@@ -843,7 +867,7 @@ export const useChatFlow = () => {
           ...prev,
           {
             id: `agent-concepts-${Date.now()}`,
-            content: `I've generated ${result.data.concepts.length} video concepts for you! Please select the one you'd like to develop:`,
+            content: `I've generated ${concepts.length} video concepts for you! Please select the one you'd like to develop:`,
             timestamp: Date.now(),
             type: "system",
           },
@@ -853,13 +877,13 @@ export const useChatFlow = () => {
         creditManagement.showCreditDeduction("Concept Writer Process");
       }
       
-      // Also check if result.data has concept array directly
-      if (
+      // Additional check for direct array format (legacy support)
+      else if (
         Array.isArray(result.data) &&
         result.data.length > 0 &&
         result.data[0].title
       ) {
-        console.log('📝 Setting concepts from array format:', result.data);
+        console.log('📝 Setting concepts from direct array format:', result.data);
         setConcepts(result.data);
         updateStepStatus(0, "done");
         setCurrentStep(1);
@@ -869,7 +893,7 @@ export const useChatFlow = () => {
           ...prev,
           {
             id: `agent-concepts-${Date.now()}`,
-            content: "I've generated 4 video concepts for you! Please select the one you'd like to develop:",
+            content: `I've generated ${result.data.length} video concepts for you! Please select the one you'd like to develop:`,
             timestamp: Date.now(),
             type: "system",
           },
@@ -879,8 +903,52 @@ export const useChatFlow = () => {
         creditManagement.showCreditDeduction("Concept Writer Process");
       }
       
-      // Handle segmentation results
-      if (result.data && result.data.segments) {
+      // Handle segmentation results - check multiple possible data structures
+      console.log('🔍 Checking for script data:', {
+        hasScripts: !!(result.data?.scripts),
+        isSegmentationStep: result.data?.step === 'segmentation',
+        hasSegments: !!(result.data?.segments),
+        dataKeys: result.data ? Object.keys(result.data) : []
+      });
+      
+      const scripts = result.data?.scripts || 
+                     result.scripts ||
+                     (result.data?.step === 'segmentation' && result.data?.scripts) ||
+                     (result.step === 'segmentation' && result.scripts) ||
+                     (result.data?.segments ? [{ segments: result.data.segments, artStyle: result.data.artStyle || "realistic", concept: result.data.concept || "", summary: result.data.summary || "" }] : null) ||
+                     (result.segments ? [{ segments: result.segments, artStyle: result.artStyle || "realistic", concept: result.concept || "", summary: result.summary || "" }] : null);
+      
+      if (scripts && Array.isArray(scripts) && scripts.length > 0) {
+        console.log('📜 Setting scripts from streaming result:', scripts);
+        
+        // Convert to the format expected by ScriptSelection component
+        const scriptsForSelection = {
+          response1: scripts[0] || null,
+          response2: scripts[1] || scripts[0] || null // Use second script or duplicate first if only one exists
+        };
+        
+        setScripts(scriptsForSelection);
+        updateStepStatus(2, "done");
+        setCurrentStep(3); // Go to script selection step
+        
+        // Add agent message showing scripts
+        timelineIntegration.setAllUserMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-scripts-${Date.now()}`,
+            content: `I've generated ${scripts.length} script option${scripts.length > 1 ? 's' : ''} for you! Please select the one you'd like to use:`,
+            timestamp: Date.now(),
+            type: "system",
+          },
+        ]);
+        
+        // Show credit deduction for script generation
+        creditManagement.showCreditDeduction("Script Generation", null, 1);
+      }
+      
+      // Legacy support: Handle segmentation results with segments directly
+      else if (result.data && result.data.segments) {
+        console.log('📜 Setting scripts from legacy segments format:', result.data.segments);
         // Create script object from the segments data
         const script = {
           segments: result.data.segments,
@@ -897,6 +965,17 @@ export const useChatFlow = () => {
         
         updateStepStatus(2, "done");
         setCurrentStep(3); // Go to script selection step
+        
+        // Add agent message showing scripts
+        timelineIntegration.setAllUserMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-scripts-${Date.now()}`,
+            content: "I've generated script segments for you! Please select the one you'd like to use:",
+            timestamp: Date.now(),
+            type: "system",
+          },
+        ]);
         
         // Show credit deduction for script generation
         creditManagement.showCreditDeduction("Script Generation", null, 1);

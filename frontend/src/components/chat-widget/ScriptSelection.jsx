@@ -140,18 +140,33 @@ const ScriptSelection = ({
                   {isSelected && <span className="ml-2 text-xs">✓ Selected</span>}
                 </div>
 
-                {/* Seconds and Summary */}
+                {/* Segments and Duration */}
                 <div className="space-y-1 mb-2">
                   <div className="text-gray-300 text-xs">
-                    <span className="text-cyan-300">Seconds:</span> {card.script?.segments?.length ? card.script.segments.length * 5 : 0}<span>s</span>
+                    <span className="text-cyan-300">Segments:</span> {card.script?.segments?.length || card.script?.totalSegments || 0}
+                  </div>
+                  <div className="text-gray-300 text-xs">
+                    <span className="text-cyan-300">Duration:</span> {card.script?.segments?.length ? card.script.segments.length * 5 : 0}s
                   </div>
                 </div>
 
                 {/* Summary content */}
                 <div className="flex-1">
                   {expandedCard === index ? (
-                    <div className="text-gray-300 text-xs leading-relaxed">
-                      <span className="text-cyan-300">Summary:</span> {card.script?.summary || "No summary available"}
+                    <div className="text-gray-300 text-xs leading-relaxed space-y-2">
+                      <div>
+                        <span className="text-cyan-300">Summary:</span> {card.script?.summary || "No summary available"}
+                      </div>
+                      {card.script?.artStyle && (
+                        <div>
+                          <span className="text-cyan-300">Art Style:</span> {card.script.artStyle}
+                        </div>
+                      )}
+                      {card.script?.segments?.length > 0 && (
+                        <div>
+                          <span className="text-cyan-300">First Segment:</span> {card.script.segments[0]?.narration || card.script.segments[0]?.textPrompt || "No preview available"}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="relative">

@@ -160,6 +160,15 @@ export const useAgentStreaming = () => {
       handleToolResult,
     } = callbacks;
 
+    console.log('📨 handleStreamMessage received:', {
+      type: message.type,
+      messageKeys: Object.keys(message),
+      dataKeys: message.data ? Object.keys(message.data) : 'no data',
+      hasScripts: !!(message.data?.scripts || message.scripts),
+      hasConcepts: !!(message.data?.concepts || message.concepts),
+      messageType: message.type
+    });
+
     setStreamMessages((prev) => [...prev, message]);
 
     switch (message.type) {
@@ -310,9 +319,11 @@ export const useAgentStreaming = () => {
       case "result": {
         // Debug the message data to understand the structure
         console.log('🔍 Result message data:', message.data);
+        console.log('🔍 Full message structure:', message);
+        console.log('🔍 Message keys:', Object.keys(message));
         
         const completeMessage = getToolCompleteMessage(
-          message.data.toolName || message.data.tool_name || "operation",
+          message.data?.toolName || message.data?.tool_name || message.toolName || "operation",
         );
         setAgentActivity(completeMessage);
         setStreamingProgress(null); // Clear progress
@@ -330,8 +341,11 @@ export const useAgentStreaming = () => {
 
         // Add small delay to ensure completion message is processed before tool result
         if (handleToolResult) {
+          console.log('🔄 Calling handleToolResult with message.data:', message.data);
+          console.log('🔄 Full message being passed:', message);
           setTimeout(async () => {
-            await handleToolResult(message.data);
+            // Pass the full message instead of just message.data in case data is empty
+            await handleToolResult(message.data || message);
           }, 50); // Small delay to ensure message ordering
         }
         break;
@@ -468,10 +482,12 @@ export const useAgentStreaming = () => {
                 if (line.startsWith("data: ")) {
                   try {
                     const jsonData = line.slice(6).trim();
+                    console.log('🔍 Raw JSON data received:', jsonData);
                     const data = JSON.parse(jsonData);
+                    console.log('📦 Parsed stream data:', data);
                     await handleStreamMessage(data, callbacks);
                   } catch (parseError) {
-                    console.error("Error parsing stream message:", parseError);
+                    console.error("Error parsing stream message:", parseError, "Raw data:", line);
                   }
                 }
               }
