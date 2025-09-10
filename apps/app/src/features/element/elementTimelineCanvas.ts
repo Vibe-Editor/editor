@@ -11,6 +11,7 @@ import {
 import { IUIStore, uiStore } from "../../states/uiStore";
 import { darkenColor } from "../../utils/rgbColor";
 import { TimelineController } from "../../controllers/timeline";
+import { loadedAssetStore } from "../asset/loadedAssetStore";
 import { IKeyframeStore, keyframeStore } from "../../states/keyframeStore";
 import {
   IRenderOptionStore,
@@ -36,6 +37,7 @@ export class elementTimelineCanvas extends LitElement {
   targetLastPosition: { x: number; y: number } | undefined;
   targetStartTime: ObjectClassType;
   targetDuration: ObjectClassType;
+  targetTrack: ObjectClassType;
   targetMediaType: "static" | "dynamic" | undefined;
   cursorType: "none" | "move" | "moveNotGuide" | "stretchStart" | "stretchEnd";
   cursorNow: number;
@@ -53,6 +55,7 @@ export class elementTimelineCanvas extends LitElement {
     this.targetIdDuringRightClick = [];
     this.targetStartTime = {};
     this.targetDuration = {};
+    this.targetTrack = {};
     this.targetTrim = {};
 
     this.isDrag = false;
@@ -149,11 +152,32 @@ export class elementTimelineCanvas extends LitElement {
       this.renderOption = state.options;
     });
 
+    // Re-draw when assets finish loading so previews appear
+    loadedAssetStore.subscribe(() => {
+      this.drawCanvas();
+    });
+
     return this;
   }
 
   _handleDocumentClick(e) {
-    if (e.target.id != "elementTimelineCanvasRef") {
+    // Temporarily disabled to test if this is causing the issue
+    // TODO: Re-enable with proper logic later
+    return;
+    
+    // Only clear selection if clicking outside the timeline canvas area
+    const canvas = document.getElementById("elementTimelineCanvasRef");
+    if (!canvas) return;
+    
+    // Check if click is on the canvas itself
+    if (e.target === canvas) return;
+    
+    // Check if click is within timeline container
+    const timelineContainer = e.target.closest('element-timeline') || 
+                             e.target.closest('element-timeline-canvas');
+    
+    if (!timelineContainer) {
+      console.log('Clearing selection - clicked outside timeline');
       this.targetId = [];
       this.drawCanvas();
     }
@@ -357,7 +381,7 @@ export class elementTimelineCanvas extends LitElement {
   drawCanvas() {
     if (!this.canvas) return;
 
-    let index = 1;
+    let index = 0;
 
     const ctx = this.canvas.getContext("2d");
     if (ctx) {
@@ -368,23 +392,70 @@ export class elementTimelineCanvas extends LitElement {
 
       // Ensure displayed size follows internal resolution
 
-      // Use parent timeline element height, but fall back to a sensible default
-      const parentTimeline = document.querySelector("element-timeline");
-      let parentHeight = parentTimeline?.offsetHeight ?? 0;
-      if (parentHeight === 0) {
-        // Force a single-row timeline UI regardless of element count.
-        const rows = 1;
-        parentHeight = rows * 36; // ~30px bar * 1.2 spacing
-      }
+      // Determine number of timeline rows
+      let rows: number;
+      const highestTrack = Object.values(this.timeline).length > 0
+        ? Math.max(
+            ...Object.values(this.timeline).map((el: any) => (el.track ?? 0) + 1),
+            1,
+          )
+        : 0;
+      // Always show at least 3 rows; expand further if more tracks are used
+      rows = Math.max(highestTrack, 3);
+      const parentHeight = rows * 36; // 30px clip height + ~20% padding
       this.canvas.height = parentHeight * dpr;
 
       // Reflect calculated height in CSS so the element is actually visible
       this.canvas.style.height = `${parentHeight}px`;
 
+      // Also make sure the host timeline element can scroll vertically if needed
+      const parentTimeline = document.querySelector("element-timeline") as HTMLElement;
+      if (parentTimeline) {
+        parentTimeline.style.height = `${parentHeight}px`;
+      }
+
       ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       // Reset any existing transform before applying new scaling to avoid cumulative scaling.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
+
+      // Helper to draw preview while preserving aspect ratio (letterbox)
+      const drawPreview = (
+        source: HTMLImageElement | HTMLCanvasElement,
+        dx: number,
+        dy: number,
+        dw: number,
+        dh: number,
+      ) => {
+        const srcW = source.width;
+        const srcH = source.height;
+        if (!srcW || !srcH) return;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(dx, dy, dw, dh);
+        ctx.clip();
+        const scale = Math.max(dw / srcW, dh / srcH); // cover strategy
+        const drawW = srcW * scale;
+        const drawH = srcH * scale;
+        const offsetX = dx + (dw - drawW) / 2;
+        const offsetY = dy + (dh - drawH) / 2;
+        ctx.drawImage(source, offsetX, offsetY, drawW, drawH);
+        ctx.restore();
+      };
+
+
+      // Draw row grid lines only when timeline is empty to avoid duplicate lines.
+      const ROW_H = 30;
+      const ROW_SPACING = ROW_H * 1.2;
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= rows; i++) {
+        const y = i * ROW_SPACING;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(this.canvas.width / dpr, y);
+        ctx.stroke();
+      }
 
       const sortedTimeline = Object.fromEntries(
         Object.entries(this.timeline).sort(
@@ -395,9 +466,14 @@ export class elementTimelineCanvas extends LitElement {
 
       for (const elementId in sortedTimeline) {
         if (Object.prototype.hasOwnProperty.call(sortedTimeline, elementId)) {
-          const height = 30;
-          // Render every element on the same vertical track.
-          const top = height * 1.2 - this.canvasVerticalScroll;
+          const ROW_H = 30;
+          const ROW_SPACING = ROW_H * 1.2;
+          const verticalMargin = (ROW_SPACING - ROW_H) / 2;
+          const height = ROW_H;
+          // Calculate row position so clip is vertically centered within row
+          const track = (this.timeline[elementId].track ?? 0);
+          const topOffset = 2; // Minimal offset - first row should be very close to ruler
+          const top = track * ROW_SPACING + verticalMargin - this.canvasVerticalScroll + topOffset;
           const left =
             this.millisecondsToPx(this.timeline[elementId].startTime) -
             this.timelineScroll;
@@ -428,30 +504,85 @@ export class elementTimelineCanvas extends LitElement {
             ctx.strokeStyle = this.timelineColor[elementId];
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.rect(finalLeft, top, width, height);
+            if (ctx.roundRect) {
+              ctx.roundRect(finalLeft, top, width, height, 4);
+            } else {
+              // Fallback path for older browsers
+              ctx.rect(finalLeft, top, width, height);
+            }
             ctx.stroke();
+            // Draw preview frame for images / gifs
+            if (filetype === "image") {
+              const imgStore = loadedAssetStore.getState();
+              let img = imgStore.getImage(this.timeline[elementId].localpath);
+              if (!img) {
+                // kick off async load; preview will show once loaded
+                imgStore.loadImage(this.timeline[elementId].localpath).catch(() => {});
+              } else {
+                drawPreview(img, finalLeft, top, width, height);
+              }
+            } else if (filetype === "gif") {
+              const assetStore = loadedAssetStore.getState();
+              let frames = assetStore.getGif(this.timeline[elementId].localpath);
+              if (!frames) {
+                assetStore.loadGif(this.timeline[elementId].localpath).catch(() => {});
+              }
+              if (frames?.length) {
+                const frame = frames[0];
+                const tempCanvas = document.createElement("canvas");
+                tempCanvas.width = frame.imageData.width;
+                tempCanvas.height = frame.imageData.height;
+                tempCanvas.getContext("2d")?.putImageData(frame.imageData, 0, 0);
+                drawPreview(tempCanvas, finalLeft, top, width, height);
+              }
+            }
 
             if (this.targetId.includes(elementId)) {
               this.drawActive(ctx, elementId, finalLeft, top, width, height);
             }
           } else if (elementType == "dynamic") {
             const width = this.millisecondsToPx(
-              this.timeline[elementId].duration /
-                this.timeline[elementId].speed,
+              this.timeline[elementId].trim.endTime -
+                this.timeline[elementId].trim.startTime,
             );
 
             ctx.strokeStyle = this.timelineColor[elementId];
             ctx.lineWidth = 2;
 
+            const adjustedLeft =
+              this.millisecondsToPx(this.timeline[elementId].startTime + this.timeline[elementId].trim.startTime) -
+              this.timelineScroll;
             ctx.beginPath();
-            ctx.rect(left, top, width, height);
+            if (ctx.roundRect) {
+              ctx.roundRect(adjustedLeft, top, width, height, 4);
+            } else {
+              ctx.rect(adjustedLeft, top, width, height);
+            }
             ctx.stroke();
+            // Draw preview frame for video clips
+            {
+              const store = loadedAssetStore.getState();
+              let meta = store.getElementVideo(elementId);
+              if (!meta) {
+                store.loadElementVideo(elementId, this.timeline[elementId]).catch(() => {});
+              } else if (meta.canvas) {
+                drawPreview(meta.canvas, adjustedLeft, top, width, height);
+              }
+            }
 
             if (this.targetId.includes(elementId)) {
-              this.drawActive(ctx, elementId, left, top, width, height);
+              this.drawActive(ctx, elementId, adjustedLeft, top, width, height);
             }
             // Skip shading for trimmed areas since we no longer fill bars.
           }
+
+          // Draw horizontal separation line for each timeline row
+          ctx.strokeStyle = "rgba(255,255,255,0.15)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, top + height + verticalMargin);
+          ctx.lineTo(this.canvas.width / dpr, top + height + verticalMargin);
+          ctx.stroke();
 
           const isActive = this.isActiveAnimationPanel(elementId);
 
@@ -772,6 +903,15 @@ export class elementTimelineCanvas extends LitElement {
     }
 
     if (elementType == "dynamic") {
+      // Safety check: ensure targetTrim is properly initialized
+      if (!this.targetTrim[targetId] || this.targetTrim[targetId].startTime === undefined) {
+        console.warn('targetTrim not properly initialized for', targetId, 'reinitializing...');
+        this.targetTrim[targetId] = {
+          startTime: this.timeline[targetId].trim.startTime,
+          endTime: this.timeline[targetId].trim.endTime,
+        };
+      }
+
       if (this.targetTrim[targetId].startTime + this.pxToMilliseconds(dx) > 0) {
         this.timeline[targetId].startTime = this.targetStartTime[targetId];
         this.timeline[targetId].trim.startTime =
@@ -801,6 +941,15 @@ export class elementTimelineCanvas extends LitElement {
     }
 
     if (elementType == "dynamic") {
+      // Safety check: ensure targetTrim is properly initialized
+      if (!this.targetTrim[targetId] || this.targetTrim[targetId].endTime === undefined) {
+        console.warn('targetTrim not properly initialized for', targetId, 'reinitializing...');
+        this.targetTrim[targetId] = {
+          startTime: this.timeline[targetId].trim.startTime,
+          endTime: this.timeline[targetId].trim.endTime,
+        };
+      }
+
       if (
         this.targetTrim[targetId].endTime + this.pxToMilliseconds(dx) <
         this.targetDuration[targetId] / this.timeline[targetId].speed
@@ -816,7 +965,7 @@ export class elementTimelineCanvas extends LitElement {
     targetId: string;
     cursorType: "none" | "move" | "stretchStart" | "stretchEnd";
   } {
-    let index = 1;
+    let index = 0;
     let targetId = "";
     let cursorType = "none";
 
@@ -828,9 +977,18 @@ export class elementTimelineCanvas extends LitElement {
 
     for (const elementId in sortedTimeline) {
       if (Object.prototype.hasOwnProperty.call(sortedTimeline, elementId)) {
-        const defaultWidth = this.millisecondsToPx(
-          this.timeline[elementId].duration,
-        );
+        // Calculate width based on element type
+        let defaultWidth;
+        const elementType = elementUtils.getElementType(this.timeline[elementId].filetype);
+        if (elementType === "dynamic") {
+          // For dynamic elements (videos), use trimmed duration
+          defaultWidth = this.millisecondsToPx(
+            this.timeline[elementId].trim.endTime - this.timeline[elementId].trim.startTime
+          );
+        } else {
+          // For static elements, use full duration
+          defaultWidth = this.millisecondsToPx(this.timeline[elementId].duration);
+        }
 
         let additionalLeft = 0;
 
@@ -844,11 +1002,21 @@ export class elementTimelineCanvas extends LitElement {
 
         const defaultHeight = 30;
         // All clips share the same vertical track, so Y is constant.
-        const startY = defaultHeight * 1.2 - this.canvasVerticalScroll;
-        const startX =
-          this.millisecondsToPx(this.timeline[elementId].startTime) -
-          this.timelineScroll +
-          additionalLeft;
+        const track = (this.timeline[elementId].track ?? 0);
+        const startY = track * defaultHeight * 1.2 - this.canvasVerticalScroll;
+        
+        // Calculate startX based on element type
+        let startX;
+        if (elementType === "dynamic") {
+          // For dynamic elements (videos), start position includes trim offset
+          startX = this.millisecondsToPx(
+            this.timeline[elementId].startTime + this.timeline[elementId].trim.startTime
+          ) - this.timelineScroll + additionalLeft;
+        } else {
+          // For static elements, use start time directly
+          startX = this.millisecondsToPx(this.timeline[elementId].startTime) -
+            this.timelineScroll + additionalLeft;
+        }
 
         const endX = startX + defaultWidth;
         const endY = startY + defaultHeight;
@@ -874,20 +1042,23 @@ export class elementTimelineCanvas extends LitElement {
               return { targetId: targetId, cursorType: "move" };
             }
           } else if (elementType == "dynamic") {
-            const trimStartTime = this.millisecondsToPx(
-              this.timeline[elementId].trim.startTime,
+            // For dynamic elements (videos), calculate positions exactly as they are rendered
+            const trimmedWidth = this.millisecondsToPx(
+              this.timeline[elementId].trim.endTime - this.timeline[elementId].trim.startTime
             );
-            const trimEndTime = this.millisecondsToPx(
-              this.timeline[elementId].trim.endTime,
-            );
+            const adjustedStartX = this.millisecondsToPx(
+              this.timeline[elementId].startTime + this.timeline[elementId].trim.startTime
+            ) - this.timelineScroll;
+            const adjustedEndX = adjustedStartX + trimmedWidth;
+            
             if (
-              x > startX + trimStartTime - stretchArea &&
-              x < startX + trimStartTime + stretchArea
+              x > adjustedStartX - stretchArea &&
+              x < adjustedStartX + stretchArea
             ) {
               return { targetId: targetId, cursorType: "stretchStart" };
             } else if (
-              x > trimEndTime + startX - stretchArea &&
-              x < trimEndTime + startX + stretchArea
+              x > adjustedEndX - stretchArea &&
+              x < adjustedEndX + stretchArea
             ) {
               return { targetId: targetId, cursorType: "stretchEnd" };
             } else {
@@ -1021,39 +1192,14 @@ export class elementTimelineCanvas extends LitElement {
   }
 
   exchangePriority(targetId, next) {
-    // next는 -1이거나, 1이거나
-    const sortedTimeline = Object.fromEntries(
-      Object.entries(this.timeline).sort(
-        ([, valueA]: any, [, valueB]: any) => valueA.priority - valueB.priority,
-      ),
-    );
+    // next is -1 (up) or 1 (down)
+    const targetEl = this.timeline[targetId];
+    if (!targetEl) return;
 
-    const priorityArray = Object.entries(sortedTimeline).map(
-      ([key, value]: any) => ({
-        key: key,
-        priority: value.priority,
-      }),
-    );
+    const newTrack = Math.max((targetEl.track ?? 0) + next, 0);
+    targetEl.track = newTrack;
 
-    let targetArrayIndex = -1;
-    let index = 0;
-
-    for (const key in sortedTimeline) {
-      if (Object.prototype.hasOwnProperty.call(sortedTimeline, key)) {
-        if (key == targetId) {
-          targetArrayIndex = index;
-        }
-        index += 1;
-      }
-    }
-
-    if (targetArrayIndex != -1) {
-      this.timeline[targetId].priority =
-        priorityArray[targetArrayIndex + next].priority;
-      this.timeline[priorityArray[targetArrayIndex + next].key].priority =
-        priorityArray[targetArrayIndex].priority;
-    }
-
+    // keep store in sync
     this.timelineState.patchTimeline(this.timeline);
   }
 
@@ -1159,6 +1305,9 @@ export class elementTimelineCanvas extends LitElement {
 
     if (this.isDrag) {
       const dx = x - this.firstClickPosition.x;
+      const dy = y - this.firstClickPosition.y;
+      const rowHeight = 30 * 1.2;
+      const trackOffset = Math.round(dy / rowHeight);
 
       for (const key in this.targetId) {
         if (Object.prototype.hasOwnProperty.call(this.targetId, key)) {
@@ -1172,6 +1321,13 @@ export class elementTimelineCanvas extends LitElement {
             this.updateTargetStartStretch({ targetId: target, dx: dx });
           } else if (this.cursorType == "stretchEnd") {
             this.updateTargetEndStretch({ targetId: target, dx: dx });
+          }
+
+          // vertical track movement
+          if (trackOffset !== 0) {
+            const baseTrack = this.targetTrack[target] ?? 0;
+            const newTrack = Math.max(baseTrack + trackOffset, 0);
+            this.timeline[target].track = newTrack;
           }
 
           this.timelineState.patchTimeline(this.timeline);
@@ -1188,6 +1344,7 @@ export class elementTimelineCanvas extends LitElement {
       const y = e.offsetY;
 
       const target = this.findTarget({ x: x, y: y });
+      console.log('Mouse down - target found:', target);
 
       if (e.shiftKey && target.targetId != "") {
         this.targetId.push(target.targetId);
@@ -1222,6 +1379,7 @@ export class elementTimelineCanvas extends LitElement {
         const elementId = this.targetId[index];
         this.targetStartTime[elementId] = this.timeline[elementId].startTime;
         this.targetDuration[elementId] = this.timeline[elementId].duration;
+        this.targetTrack[elementId] = (this.timeline[elementId].track ?? 0);
 
         let elementType = elementUtils.getElementType(
           this.timeline[elementId].filetype,
@@ -1423,11 +1581,12 @@ export class elementTimelineCanvas extends LitElement {
   }
 
   renderCanvas() {
+    const canvasWidth = window.innerWidth - this.resize.timelineVertical.leftOption;
     return html`
       <canvas
         id="elementTimelineCanvasRef"
-        style="width: 1122px;left: ${this.resize.timelineVertical
-          .leftOption}px;position: absolute;"
+        style="width: ${canvasWidth}px;left: ${this.resize.timelineVertical
+          .leftOption}px;position: absolute;top: 60px;"
         @mousewheel=${this._handleMouseWheel}
         @mousemove=${this._handleMouseMove}
         @mousedown=${this._handleMouseDown}

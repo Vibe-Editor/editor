@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import { videoApi, s3Api } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import { videoApi } from '../services/video-gen';
+import { s3Api } from '../services/s3';
+import { useSegmentStore } from '../store/useSegmentStore';
+import { useProjectStore } from '../store/useProjectStore';
 
 function SegmentDetail({ segment }) {
   const [retryLoading, setRetryLoading] = useState(false);
@@ -8,17 +11,23 @@ function SegmentDetail({ segment }) {
   const [chatMessages, setChatMessages] = useState([]);
   const [segmentImageUrl, setSegmentImageUrl] = useState(null);
   const [segmentVideoUrl, setSegmentVideoUrl] = useState(null);
+  
+  // Use stores
+  const { selectedProject } = useProjectStore();
+  const { 
+    getSegmentImage, 
+    getSegmentVideo, 
+    setSegmentVideo 
+  } = useSegmentStore();
 
   // Function to load segment data
   const loadSegmentData = () => {
     if (segment) {
-      // Load segment-specific data from localStorage
-      const storedImages = JSON.parse(localStorage.getItem('segmentImages') || '{}');
-      const storedVideos = JSON.parse(localStorage.getItem('segmentVideos') || '{}');
+      const isProject = !!selectedProject;
       
-      // Get this segment's specific image and video URLs
-      const currentImageUrl = segment.imageUrl || storedImages[segment.id];
-      const currentVideoUrl = segment.videoUrl || storedVideos[segment.id];
+      // Get this segment's specific image and video URLs from store
+      const currentImageUrl = segment.imageUrl || getSegmentImage(segment.id, isProject);
+      const currentVideoUrl = segment.videoUrl || getSegmentVideo(segment.id, isProject);
       
       // Update state variables
       setSegmentImageUrl(currentImageUrl);
@@ -66,15 +75,14 @@ function SegmentDetail({ segment }) {
     loadSegmentData();
   }, [segment]);
 
-  // Listen for localStorage changes to update segment data
   useEffect(() => {
-    const handleStorageChange = () => {
+    const handleProjectChange = () => {
       loadSegmentData();
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [segment]);
+    window.addEventListener('projectChanged', handleProjectChange);
+    return () => window.removeEventListener('projectChanged', handleProjectChange);
+  }, [segment, selectedProject]);
 
   const handleRetryVideo = async () => {
     if (!segmentImageUrl || !segment?.narration) {
@@ -96,15 +104,18 @@ function SegmentDetail({ segment }) {
         animation_prompt: segment.animation || segment.visual,
         art_style: segment.artStyle || '',
         imageS3Key: segment.s3Key,
-        uuid: segment.id
+        uuid: segment.id,
+        project_id: selectedProject?.id,
+        model: "gen4_turbo"
       });
       
       if (result.s3Keys && result.s3Keys.length > 0) {
         // Get CloudFront URL directly
         const videoUrl = await s3Api.downloadVideo(result.s3Keys[0]);
-        const storedVideos = JSON.parse(localStorage.getItem('segmentVideos') || '{}');
-        storedVideos[segment.id] = videoUrl;
-        localStorage.setItem('segmentVideos', JSON.stringify(storedVideos));
+        
+        // Save to store
+        const isProject = !!selectedProject;
+        setSegmentVideo(segment.id, videoUrl, isProject);
 
         // Update state variables
         setSegmentVideoUrl(videoUrl);
