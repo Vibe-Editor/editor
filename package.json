@@ -26,8 +26,8 @@
     "url": "https://github.com/cartesiancs/usuals-ai"
   },
   "build": {
-    "productName": "Usuals.ai",
-    "appId": "ai.usuals.app",
+    "productName": "Usuals App",
+    "appId": "ai.usualsapp",
     "asar": true,
     "extraResources": [
       {
@@ -53,16 +53,28 @@
     },
     "mac": {
       "target": [
-        "dmg",
-        "pkg"
+        "dmg"
       ],
       "icon": "assets/icons/mac/icon.icns",
       "category": "public.app-category.video",
       "darkModeSupport": true,
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "identity": null,
-      "type": "development"
+      "minimumSystemVersion": "12.0.0",
+      "entitlements": "electron/entitlements.mac.plist",
+      "entitlementsInherit": "electron/entitlements.mac.inherit.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Usuals.ai needs access to your camera to record webcam video.",
+        "NSMicrophoneUsageDescription": "Usuals.ai needs access to your microphone to record audio."
+      },
+      "signIgnore": [
+        ".*\\.map$",
+        "^assets/icons/.*",
+        "^apps/.*/src/.*",
+        "^frontend/.*",
+        "^packages/.*/src/.*",
+        "^node_modules/(.+)/(test|tests|__tests__)/.*"
+      ]
     },
     "dmg": {
       "contents": [
@@ -80,13 +92,10 @@
       "window": {
         "width": 540,
         "height": 380
-      },
-      "sign": false
+      }
     },
-    "pkg": {
-      "installLocation": "/Applications",
-      "identity": null
-    },
+    "afterSign": "electron/notarize.js",
+    "afterAllArtifactBuild": "electron/afterAll.js",
     "win": {
       "target": [
         {
@@ -110,18 +119,19 @@
     "files": [
       "main/**/*",
       "assets/**/*",
-      "frontend/dist/**/*",
-      "apps/**/*",
+      "apps/app/index.html",
+      "apps/app/page/**/*",
+      "apps/app/dist/**/*",
+      "apps/overlay-record/dist/**/*",
+      "packages/render/dist/**/*",
       "package.json"
     ],
     "asarUnpack": [
+      "**/*.node",
       "node_modules/call-bind-apply-helpers/**/*",
       "node_modules/call-bind/**/*",
       "node_modules/dunder-proto/**/*",
-      "node_modules/get-intrinsic/**/*",
-      "node_modules/color-name/**/*",
-      "node_modules/color-convert/**/*",
-      "node_modules/color/**/*"
+      "node_modules/get-intrinsic/**/*"
     ]
   },
   "dependencies": {
