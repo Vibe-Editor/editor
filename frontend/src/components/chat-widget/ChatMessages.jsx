@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ConceptSelection from "./ConceptSelection";
 import ScriptSelection from "./ScriptSelection";
 import MediaGeneration from "./MediaGeneration";
@@ -76,10 +76,15 @@ const ChatMessages = ({
     "veo3": { label: "veo3", tokens: "37", time: "5" },
   };
 
-  // Get available models based on approval tool type (copied from InputArea logic)
-  const getAvailableModelsForApproval = (toolName) => {
-    // Initial concept generation - only Gemini 2.5 Flash
-    if (toolName === 'get_web_info' || toolName === 'generate_concepts_with_approval') {
+  // Get available models based on approval tool type (updated for text-to-video workflow)
+  const getAvailableModelsForApproval = useCallback((toolName) => {
+    // Web research - only Gemini 2.5 Flash
+    if (toolName === 'get_web_info') {
+      return [{ value: "gpt-2.5", ...modelData["gpt-2.5"] }];
+    }
+
+    // Concept generation - only Gemini 2.5 Flash
+    if (toolName === 'generate_concepts_with_approval') {
       return [{ value: "gpt-2.5", ...modelData["gpt-2.5"] }];
     }
 
@@ -91,39 +96,38 @@ const ChatMessages = ({
       ];
     }
 
-
-    // Video generation after script selection - Runway default, Kling and veo3 options
+    // Video generation after script selection - veo3 default, Runway and Kling options
     if (toolName === 'generate_video_with_approval') {
       return [
+        { value: "veo3", ...modelData["veo3"] },
         { value: "gen4_turbo", ...modelData["gen4_turbo"] },
         { value: "kling-v2.1-master", ...modelData["kling-v2.1-master"] },
-        { value: "veo3", ...modelData["veo3"] },
       ];
     }
 
     // Default models for other cases
     return [{ value: "gpt-2.5", ...modelData["gpt-2.5"] }];
-  };
+  }, [modelData]);
 
   // Handle model selection for approval
-  const handleApprovalModelSelect = (modelValue, toolName) => {
+  const handleApprovalModelSelect = (modelValue) => {
     setSelectedApprovalModel(modelValue);
     setIsApprovalDropdownOpen(false);
 
-    // Update chatFlow immediately when model changes (same logic as InputArea)
+    // Update chatFlow immediately when model changes (updated for text-to-video workflow)
     if (chatFlow) {
-      if (modelValue === "gen4_turbo") {
+      if (modelValue === "veo3") {
+        chatFlow.setSelectedVideoModel("veo3");
+      } else if (modelValue === "gen4_turbo") {
         chatFlow.setSelectedVideoModel("gen4_turbo");
       } else if (modelValue === "kling-v2.1-master") {
         chatFlow.setSelectedVideoModel("kling-v2.1-master");
-      } else if (modelValue === "veo3") {
-        chatFlow.setSelectedVideoModel("veo3");
       } else if (modelValue === "gemini-pro") {
         chatFlow.setSelectedScriptModel("gemini-pro");
       } else if (modelValue === "gemini-flash") {
         chatFlow.setSelectedScriptModel("gemini-flash");
       } else if (modelValue === "gpt-2.5") {
-        chatFlow.setSelectedScriptModel("gemini-2.0-flash-exp");
+        chatFlow.setSelectedConceptModel("gemini-2.0-flash-exp");
       }
     }
   };
@@ -151,7 +155,7 @@ const ChatMessages = ({
         setSelectedApprovalModel(availableModels[0].value);
       }
     }
-  }, [chatFlow.pendingApprovals]);
+  }, [chatFlow.pendingApprovals, getAvailableModelsForApproval]);
 
   // Track concept selection state
   useEffect(() => {
@@ -643,7 +647,7 @@ const ChatMessages = ({
                               {availableModels.map((model) => (
                                 <div
                                   key={model.value}
-                                  onClick={() => handleApprovalModelSelect(model.value, approval.toolName)}
+                                  onClick={() => handleApprovalModelSelect(model.value)}
                                   className='px-3 py-2 cursor-pointer transition-all duration-200 flex flex-col sm:flex-row sm:items-center sm:justify-between group'
                                   style={{
                                     background:
