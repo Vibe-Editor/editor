@@ -908,7 +908,12 @@ export const useChatFlow = () => {
         hasScripts: !!(result.data?.scripts),
         isSegmentationStep: result.data?.step === 'segmentation',
         hasSegments: !!(result.data?.segments),
-        dataKeys: result.data ? Object.keys(result.data) : []
+        dataKeys: result.data ? Object.keys(result.data) : [],
+        // Check for video data too
+        hasVideoData: !!(result.data?.videoData),
+        isVideoStep: result.data?.step === 'video_generation_segment',
+        hasS3Keys: !!(result.data?.s3Keys),
+        segmentId: result.data?.segmentId
       });
       
       const scripts = result.data?.scripts || 
@@ -981,6 +986,84 @@ export const useChatFlow = () => {
         creditManagement.showCreditDeduction("Script Generation", null, 1);
       }
       
+      // Handle video generation results - individual segment completion
+      if (result.data?.step === 'video_generation_segment' || result.step === 'video_generation_segment') {
+        const segmentId = result.data?.segmentId || result.segmentId;
+        const videoData = result.data?.videoData || result.videoData;
+        const s3Keys = result.data?.s3Keys || result.s3Keys || [];
+        
+        console.log('🎬 Processing individual video segment completion:', {
+          segmentId,
+          hasVideoData: !!videoData,
+          s3KeysCount: s3Keys.length,
+          s3Keys
+        });
+        
+        if (segmentId && videoData && s3Keys.length > 0) {
+          // Process the video completion similar to handleIndividualVideoCompletion
+          try {
+            const s3Key = s3Keys[0]; // Use the first S3 key
+            console.log(`🎬 Processing video for segment ${segmentId} with S3 key:`, s3Key);
+            
+            // Convert S3 key to CloudFront URL (using the s3Api service)
+            // For now, we'll use the S3 key directly and let the video component handle URL conversion
+            const videoUrl = s3Key; // The s3Api.downloadVideo will be called by the video component
+            
+            // Update generated videos immediately
+            setGeneratedVideos((prev) => {
+              const newVideos = { ...prev, [segmentId]: videoUrl };
+              console.log("Updated generated videos (individual segment):", newVideos);
+              return newVideos;
+            });
+            
+            // Update stored videos map for timeline
+            setStoredVideosMap((prev) => {
+              const updated = { ...prev, [segmentId]: videoUrl };
+              console.log("Updated stored videos map (individual segment):", updated);
+              return updated;
+            });
+            
+            // Add success message to chat
+            timelineIntegration.setAllUserMessages((prev) => [
+              ...prev,
+              {
+                id: `video-segment-complete-${segmentId}-${Date.now()}`,
+                content: `✅ Video completed for segment ${segmentId}`,
+                timestamp: Date.now(),
+                type: "system",
+              },
+            ]);
+            
+            // Trigger scroll to bottom to show new video
+            setTimeout(() => {
+              window.dispatchEvent(
+                new CustomEvent("scrollChatToBottom", {
+                  detail: {
+                    reason: "video_segment_completed",
+                    segmentId: segmentId,
+                    timestamp: Date.now(),
+                  },
+                }),
+              );
+            }, 200);
+            
+          } catch (error) {
+            console.error(`Failed to process video for segment ${segmentId}:`, error);
+            
+            // Add error message to chat
+            timelineIntegration.setAllUserMessages((prev) => [
+              ...prev,
+              {
+                id: `video-error-${segmentId}-${Date.now()}`,
+                content: `❌ Failed to process video for segment ${segmentId}`,
+                timestamp: Date.now(),
+                type: "system",
+              },
+            ]);
+          }
+        }
+      }
+      
       console.log('✅ handleToolResult completed');
     },
     [
@@ -990,6 +1073,8 @@ export const useChatFlow = () => {
       timelineIntegration,
       creditManagement,
       setScripts,
+      setGeneratedVideos,
+      setStoredVideosMap,
     ],
   );
 
