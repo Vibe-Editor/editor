@@ -43,20 +43,9 @@ export default function InputArea({
       ];
     }
 
-    // Image generation after script selection - Recraft default, Imagen option
+    // Video generation after script selection - Runway default, Kling and veo3 options
     if (
       chatFlow?.selectedScript &&
-      Object.keys(chatFlow?.generatedImages || {}).length === 0
-    ) {
-      return [
-        { value: "recraft-v3", ...modelData["recraft-v3"] },
-        { value: "imagen", ...modelData["imagen"] },
-      ];
-    }
-
-    // Video generation after image generation - Runway default, Kling and veo3 options
-    if (
-      Object.keys(chatFlow?.generatedImages || {}).length > 0 &&
       Object.keys(chatFlow?.generatedVideos || {}).length === 0
     ) {
       return [
@@ -86,11 +75,6 @@ export default function InputArea({
         console.log("Set default script model to flash");
       } else if (
         chatFlow?.selectedScript &&
-        Object.keys(chatFlow?.generatedImages || {}).length === 0
-      ) {
-        setSelectedModel("recraft-v3"); // Default to Recraft
-      } else if (
-        Object.keys(chatFlow?.generatedImages || {}).length > 0 &&
         Object.keys(chatFlow?.generatedVideos || {}).length === 0
       ) {
         setSelectedModel("gen4_turbo"); // Default to RunwayML
@@ -100,7 +84,6 @@ export default function InputArea({
     chatFlow?.concepts,
     chatFlow?.selectedConcept,
     chatFlow?.selectedScript,
-    chatFlow?.generatedImages,
     chatFlow?.generatedVideos,
   ]);
 
@@ -207,9 +190,7 @@ export default function InputArea({
 
     // Update chatFlow immediately when model changes
     if (chatFlow) {
-      if (modelValue === "recraft-v3" || modelValue === "imagen") {
-        chatFlow.setSelectedImageModel(modelValue);
-      } else if (modelValue === "gen4_turbo") {
+      if (modelValue === "gen4_turbo") {
         chatFlow.setSelectedVideoModel("gen4_turbo");
       } else if (modelValue === "kling-v2.1-master") {
         chatFlow.setSelectedVideoModel("kling-v2.1-master");
@@ -236,7 +217,6 @@ export default function InputArea({
         inputAreaModel: modelValue,
         chatFlowModels: {
           script: chatFlow?.selectedScriptModel,
-          image: chatFlow?.selectedImageModel,
           video: chatFlow?.selectedVideoModel,
         },
       });

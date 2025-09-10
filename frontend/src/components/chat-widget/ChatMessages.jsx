@@ -5,32 +5,6 @@ import MediaGeneration from "./MediaGeneration";
 import TimelineButton from "./TimelineButton";
 import VerboseAgentLoader from "./VerboseAgentLoader";
 
-// Dynamic image generation component that always shows current state
-const ImageGenerationComponent = ({ chatFlow, onImageClick }) => {
-  const hasImages = Object.keys(chatFlow.generatedImages || {}).length > 0;
-  const isGenerating = chatFlow.loading && chatFlow.selectedScript && Object.keys(chatFlow.generatedImages || {}).length === 0;
-  return (
-    <div>
-      <div className='text-gray-100 text-sm mb-4'>
-        {hasImages
-          ? "🖼️ Generated Images:"
-          : isGenerating
-          ? "🎨 Generating Images..."
-          : "🎨 Ready to generate images"}
-      </div>
-      <MediaGeneration
-        type='image'
-        generatedImages={chatFlow.generatedImages || {}}
-        generationProgress={chatFlow.generationProgress}
-        onImageClick={onImageClick}
-        loading={isGenerating}
-        onImagesGenerated={() => {
-          // Images generated - no automatic prompt setting
-        }}
-      />
-    </div>
-  );
-};
 
 // Dynamic video generation component that always shows current state
 const VideoGenerationComponent = ({
@@ -40,7 +14,7 @@ const VideoGenerationComponent = ({
   onAddSingleVideo,
 }) => {
   const hasVideos = Object.keys(combinedVideosMap || {}).length > 0;
-  const isGeneratingVideos = chatFlow.loading && Object.keys(chatFlow.generatedImages || {}).length > 0 && Object.keys(chatFlow.generatedVideos || {}).length === 0;
+  const isGeneratingVideos = chatFlow.loading && chatFlow.selectedScript && Object.keys(chatFlow.generatedVideos || {}).length === 0;
 
   console.log('VideoGenerationComponent render:', { 
     hasVideos, 
@@ -60,7 +34,6 @@ const VideoGenerationComponent = ({
       </div>
       <MediaGeneration
         type='video'
-        generatedImages={chatFlow.generatedImages || {}}
         combinedVideosMap={combinedVideosMap || {}}
         generationProgress={chatFlow.generationProgress}
         onVideoClick={onVideoClick}
@@ -73,7 +46,6 @@ const VideoGenerationComponent = ({
 
 const ChatMessages = ({
   chatFlow,
-  onImageClick,
   onVideoClick,
   onAddSingleVideo,
   sendVideosToTimeline,
@@ -119,15 +91,8 @@ const ChatMessages = ({
       ];
     }
 
-    // Image generation after script selection - Recraft default, Imagen option
-    if (toolName === 'generate_image_with_approval') {
-      return [
-        { value: "recraft-v3", ...modelData["recraft-v3"] },
-        { value: "imagen", ...modelData["imagen"] },
-      ];
-    }
 
-    // Video generation after image generation - Runway default, Kling and veo3 options
+    // Video generation after script selection - Runway default, Kling and veo3 options
     if (toolName === 'generate_video_with_approval') {
       return [
         { value: "gen4_turbo", ...modelData["gen4_turbo"] },
@@ -147,9 +112,7 @@ const ChatMessages = ({
 
     // Update chatFlow immediately when model changes (same logic as InputArea)
     if (chatFlow) {
-      if (modelValue === "recraft-v3" || modelValue === "imagen") {
-        chatFlow.setSelectedImageModel(modelValue);
-      } else if (modelValue === "gen4_turbo") {
+      if (modelValue === "gen4_turbo") {
         chatFlow.setSelectedVideoModel("gen4_turbo");
       } else if (modelValue === "kling-v2.1-master") {
         chatFlow.setSelectedVideoModel("kling-v2.1-master");
@@ -369,35 +332,6 @@ const ChatMessages = ({
       });
     }
 
-    // Find image-related completion message timestamp
-    const imageApprovalMessage = chatFlow.allUserMessages?.find(msg => 
-      msg.content.includes('Approved: Approved image generation')
-    );
-    
-    const imageCompletionMessage = chatFlow.allUserMessages?.find(msg => 
-      msg.timestamp > (imageApprovalMessage?.timestamp || 0) && 
-      (msg.content.includes('Image generation completed') ||
-       msg.content.includes('operation completed successfully') ||
-       msg.content.includes('image generation') ||
-       (msg.content.includes('generated') && msg.content.includes('images')))
-    );
-
-    // Add image generation component - show if we have a selectedScript OR if we have generated images (for old projects)
-    if (chatFlow.selectedScript && chatFlow.selectedScript.segments) {
-      const imageTimestamp = imageCompletionMessage ? imageCompletionMessage.timestamp + 100 : Date.now();
-      orderedMessages.push({
-        id: "image-generation",
-        type: "system",
-        content: "",
-        component: (
-          <ImageGenerationComponent 
-            chatFlow={chatFlow}
-            onImageClick={onImageClick}
-          />
-        ),
-        timestamp: imageTimestamp,
-      });
-    }
 
     // Find video-related completion message timestamp
     const videoApprovalMessage = chatFlow.allUserMessages?.find(msg => 
@@ -412,8 +346,8 @@ const ChatMessages = ({
        (msg.content.includes('generated') && msg.content.includes('videos')))
     );
 
-    // Add video generation component - show if we have images OR if we have generated videos (for old projects)
-    if (Object.keys(chatFlow.generatedImages || {}).length > 0 || 
+    // Add video generation component - show if we have a selectedScript OR if we have generated videos (for old projects)
+    if ((chatFlow.selectedScript && chatFlow.selectedScript.segments) || 
         Object.keys(chatFlow.generatedVideos || {}).length > 0 ||
         Object.keys(chatFlow.storedVideosMap || {}).length > 0) {
       const videoTimestamp = videoCompletionMessage ? videoCompletionMessage.timestamp + 100 : Date.now();
@@ -494,13 +428,11 @@ const ChatMessages = ({
     chatFlow.selectedConcept,
     chatFlow.scripts,
     chatFlow.selectedScript,
-    chatFlow.generatedImages,
     chatFlow.generatedVideos,
     chatFlow.storedVideosMap,
     chatFlow.addingTimeline,
     combinedVideosMap,
     currentPrompt,
-    onImageClick,
     onVideoClick,
     onAddSingleVideo,
     sendVideosToTimeline,
@@ -519,7 +451,6 @@ const ChatMessages = ({
             className={`${
               message.id === "concept-request" ||
               message.id === "script-request" ||
-              message.id === "image-generation" ||
               message.id === "video-generation" ||
               message.id === "timeline-integration"
                 ? "w-full p-0" // Full width and no padding/background for component messages
@@ -645,16 +576,10 @@ const ChatMessages = ({
                           <div>I can now create detailed script segmentation for the selected concept. This will break down your content into scenes with visual descriptions, narration, and animation prompts.</div>
                         </div>
                       )}
-                      {approval.toolName === 'generate_image_with_approval' && (
-                        <div>
-                          <div className='mb-2 text-cyan-300 font-medium'>Image Generation Ready</div>
-                          <div>I'm ready to generate high-quality images for each script segment. This will create visual assets that match your chosen art style and bring your script to life.</div>
-                        </div>
-                      )}
                       {approval.toolName === 'generate_video_with_approval' && (
                         <div>
                           <div className='mb-2 text-cyan-300 font-medium'>Video Generation Ready</div>
-                          <div>I'm ready to create dynamic videos from your generated images. This will add motion and animation to transform static images into engaging video content.</div>
+                          <div>I'm ready to create dynamic videos from your script segments. This will generate engaging video content based on your selected script.</div>
                         </div>
                       )}
                     </div>
