@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Mic } from "lucide-react";
 
 /**
  * Bottom input bar that lets the user enter the main prompt and kick-off the flow.
@@ -23,9 +24,9 @@ export default function InputArea({
     "gemini-pro": { label: "Gemini Pro", tokens: "4", time: "4" },
     "recraft-v3": { label: "Recraft", tokens: "1", time: "4" },
     imagen: { label: "Imagen", tokens: "2", time: "2" },
-    "gen4_turbo": { label: "RunwayML", tokens: "2.5", time: "3" },
+    gen4_turbo: { label: "RunwayML", tokens: "2.5", time: "3" },
     "kling-v2.1-master": { label: "Kling", tokens: "20", time: "4" },
-    "veo3": { label: "veo3", tokens: "37", time: "5" },
+    veo3: { label: "veo3", tokens: "37", time: "5" },
   };
 
   // Get available models based on flow state
@@ -43,20 +44,9 @@ export default function InputArea({
       ];
     }
 
-    // Image generation after script selection - Recraft default, Imagen option
+    // Video generation after script selection - Runway default, Kling and veo3 options
     if (
       chatFlow?.selectedScript &&
-      Object.keys(chatFlow?.generatedImages || {}).length === 0
-    ) {
-      return [
-        { value: "recraft-v3", ...modelData["recraft-v3"] },
-        { value: "imagen", ...modelData["imagen"] },
-      ];
-    }
-
-    // Video generation after image generation - Runway default, Kling and veo3 options
-    if (
-      Object.keys(chatFlow?.generatedImages || {}).length > 0 &&
       Object.keys(chatFlow?.generatedVideos || {}).length === 0
     ) {
       return [
@@ -86,11 +76,6 @@ export default function InputArea({
         console.log("Set default script model to flash");
       } else if (
         chatFlow?.selectedScript &&
-        Object.keys(chatFlow?.generatedImages || {}).length === 0
-      ) {
-        setSelectedModel("recraft-v3"); // Default to Recraft
-      } else if (
-        Object.keys(chatFlow?.generatedImages || {}).length > 0 &&
         Object.keys(chatFlow?.generatedVideos || {}).length === 0
       ) {
         setSelectedModel("gen4_turbo"); // Default to RunwayML
@@ -100,7 +85,6 @@ export default function InputArea({
     chatFlow?.concepts,
     chatFlow?.selectedConcept,
     chatFlow?.selectedScript,
-    chatFlow?.generatedImages,
     chatFlow?.generatedVideos,
   ]);
 
@@ -207,9 +191,7 @@ export default function InputArea({
 
     // Update chatFlow immediately when model changes
     if (chatFlow) {
-      if (modelValue === "recraft-v3" || modelValue === "imagen") {
-        chatFlow.setSelectedImageModel(modelValue);
-      } else if (modelValue === "gen4_turbo") {
+      if (modelValue === "gen4_turbo") {
         chatFlow.setSelectedVideoModel("gen4_turbo");
       } else if (modelValue === "kling-v2.1-master") {
         chatFlow.setSelectedVideoModel("kling-v2.1-master");
@@ -236,7 +218,6 @@ export default function InputArea({
         inputAreaModel: modelValue,
         chatFlowModels: {
           script: chatFlow?.selectedScriptModel,
-          image: chatFlow?.selectedImageModel,
           video: chatFlow?.selectedVideoModel,
         },
       });
@@ -301,6 +282,38 @@ export default function InputArea({
   const currentModelData =
     availableModels.find((model) => model.value === selectedModel) ||
     availableModels[0];
+
+  // Check if this is a history project (has selectedScript but no scripts being generated)
+  const isHistoryProject = chatFlow?.selectedScript && chatFlow?.selectedScript.segments && 
+    (!chatFlow?.scripts || (!chatFlow?.scripts.response1 && !chatFlow?.scripts.response2));
+
+  // Check if audio generation is available (videos must be completed first, and not a history project)
+  const canGenerateAudio = !isHistoryProject &&
+    chatFlow?.selectedScript?.segments && 
+    Object.keys(chatFlow?.generatedVideos || {}).length > 0 &&
+    !chatFlow?.audioGenerationLoading &&
+    !chatFlow?.showAudioApproval &&
+    !chatFlow?.audioGenerationComplete;
+
+  // Handle microphone icon click
+  const handleMicrophoneClick = () => {
+    if (isHistoryProject) {
+      console.log('🎤 Audio generation not available for history projects');
+      return;
+    }
+
+    if (!canGenerateAudio) {
+      console.log('🎤 Audio generation not available yet - need to complete video generation first');
+      return;
+    }
+
+    console.log('🎤 Microphone clicked - requesting audio generation approval');
+    
+    // Trigger audio generation approval
+    if (chatFlow?.triggerAudioApproval) {
+      chatFlow.triggerAudioApproval();
+    }
+  };
 
   // Authenticated + project selected → show input
   return (
@@ -482,97 +495,29 @@ export default function InputArea({
               </div>
 
               {/* Action Icons */}
-              <div className='flex items-center gap-0'>
-                {/* Icon 1 - Palette/Color */}
-                <svg
-                  width='28'
-                  height='28'
-                  viewBox='0 0 28 28'
-                  fill='none'
-                  xmlns='http://www.w3.org/2000/svg'
+              <div className='flex items-center gap-0'>                
+                {/* Icon - Audio generation*/}
+                <div 
+                  className='hidden sm:block cursor-pointer'
+                  onClick={handleMicrophoneClick}
+                  title={
+                    isHistoryProject 
+                      ? 'Audio generation not available for history projects' 
+                      : chatFlow?.audioGenerationComplete
+                        ? 'Audio generation completed'
+                        : canGenerateAudio 
+                          ? 'Generate voice-over' 
+                          : 'Complete video generation first'
+                  }
                 >
-                  <g clipPath='url(#clip0_640_49397)'>
-                    <path
-                      d='M7.65648 13.6665C7.84184 10.1861 10.8411 7.49015 14.3215 7.67552C17.7773 7.85957 20.4922 10.5502 20.3466 13.6063C20.2438 15.5369 18.5749 17.0365 16.6442 16.9336C16.0209 16.9004 15.1379 16.6585 14.6132 17.1301C14.2084 17.494 14.1354 18.1786 14.5086 18.5923C15.0541 19.2782 14.5668 20.3806 13.6475 20.3316C10.1671 20.1462 7.47111 17.1469 7.65648 13.6665Z'
-                      stroke='#7E7E80'
-                      strokeWidth='1.5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                    <path
-                      d='M10.3188 13.3332C10.3188 12.965 10.6173 12.6665 10.9855 12.6665C11.3537 12.6665 11.6522 12.965 11.6522 13.3332C11.6522 13.7014 11.3537 13.9998 10.9855 13.9998C10.6173 13.9998 10.3188 13.7014 10.3188 13.3332Z'
-                      stroke='#7E7E80'
-                      strokeWidth='1.5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                    <path
-                      d='M13.499 10.8416C13.499 10.4734 13.7975 10.175 14.1657 10.175C14.5339 10.175 14.8324 10.4734 14.8324 10.8416C14.8324 11.2098 14.5339 11.5083 14.1657 11.5083C13.7975 11.5083 13.499 11.2098 13.499 10.8416Z'
-                      stroke='#7E7E80'
-                      strokeWidth='1.5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                    <path
-                      d='M16.4821 13.3332C16.4821 12.965 16.7806 12.6665 17.1488 12.6665C17.517 12.6665 17.8154 12.965 17.8154 13.3332C17.8154 13.7014 17.517 13.9998 17.1488 13.9998C16.7806 13.9998 16.4821 13.7014 16.4821 13.3332Z'
-                      stroke='#7E7E80'
-                      strokeWidth='1.5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                  </g>
-                  <defs>
-                    <clipPath id='clip0_640_49397'>
-                      <rect
-                        width='16'
-                        height='16'
-                        fill='white'
-                        transform='translate(6 6)'
-                      />
-                    </clipPath>
-                  </defs>
-                </svg>
-
-                {/* Icon 2 - Settings/Options - Hidden on mobile */}
-                <div className='hidden sm:block'>
-                  <svg
-                    width='28'
-                    height='28'
-                    viewBox='0 0 28 28'
-                    fill='none'
-                    xmlns='http://www.w3.org/2000/svg'
-                    className='w-6 h-6 sm:w-7 sm:h-7'
-                  >
-                    <path
-                      d='M8.66699 14H15.0003M8.66699 18H12.667M8.66699 10H19.3337M15.3337 19.3333H15.3403M18.0003 14.6667C17.5753 15.7443 17.1076 16.23 16.0003 16.6667C17.1076 17.1034 17.5753 17.589 18.0003 18.6667C18.4253 17.589 18.8931 17.1034 20.0003 16.6667C18.8931 16.23 18.4253 15.7443 18.0003 14.6667Z'
-                      stroke='white'
-                      strokeOpacity='0.5'
-                      strokeWidth='1.5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                  </svg>
-                </div>
-
-                {/* Icon 3 - Attachment - Hidden on mobile */}
-                <div className='hidden sm:block'>
-                  <svg
-                    width='28'
-                    height='28'
-                    viewBox='0 0 28 28'
-                    fill='none'
-                    xmlns='http://www.w3.org/2000/svg'
-                    className='w-6 h-6 sm:w-7 sm:h-7'
-                  >
-                    <path
-                      d='M18.9832 14.5208L16.6097 18.6318C15.4862 20.5778 12.9977 21.2446 11.0517 20.121C9.1056 18.9975 8.43883 16.5091 9.56239 14.563L12.953 8.69021C13.7021 7.39283 15.361 6.94832 16.6584 7.69736C17.9558 8.4464 18.4003 10.1053 17.6513 11.4027L14.2606 17.2755C13.8861 17.9242 13.0566 18.1464 12.4079 17.7719C11.7592 17.3974 11.537 16.5679 11.9115 15.9192L14.9631 10.6337'
-                      stroke='white'
-                      strokeOpacity='0.5'
-                      strokeWidth='1.5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                  </svg>
+                  <Mic 
+                    size={20}
+                    className={`w-4 h-4 sm:w-6 sm:h-6 transition-colors ${
+                      canGenerateAudio 
+                        ? 'text-[#94E7ED] hover:text-[#94E7ED]' 
+                        : 'text-[#6b7280] cursor-not-allowed'
+                    }`}
+                  />
                 </div>
 
                 {/* Send Div (formerly Button) */}

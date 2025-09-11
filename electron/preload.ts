@@ -137,6 +137,8 @@ const request = {
     addByUrl: (list) => ipcRenderer.invoke("extension:timeline:addByUrl", list),
     addByUrlWithDir: (list) => ipcRenderer.invoke("extension:timeline:addByUrlWithDir", list),
     addFromDir: (dirPath) => ipcRenderer.invoke("extension:timeline:addFromDir", dirPath),
+    addAudioByUrl: (list) => ipcRenderer.invoke("extension:timeline:addAudioByUrl", list),
+    addAudioByUrlWithDir: (list) => ipcRenderer.invoke("extension:timeline:addAudioByUrlWithDir", list),
   },
 };
 
@@ -206,6 +208,10 @@ const extension = {
     addByUrlWithDir: (list) =>
       ipcRenderer.invoke("extension:timeline:addByUrlWithDir", list),
     addFromDir: (dirPath) => ipcRenderer.invoke("extension:timeline:addFromDir", dirPath),
+    addAudioByUrl: (list) =>
+      ipcRenderer.invoke("extension:timeline:addAudioByUrl", list),
+    addAudioByUrlWithDir: (list) =>
+      ipcRenderer.invoke("extension:timeline:addAudioByUrlWithDir", list),
   },
 };
 

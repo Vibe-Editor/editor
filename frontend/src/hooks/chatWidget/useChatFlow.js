@@ -6,6 +6,7 @@ import { useCreditManagement } from "./useCreditManagement";
 import { useModelSelection } from "./useModelSelection";
 import { useTimelineIntegration } from "./useTimelineIntegration";
 import { useRetryLogic } from "./useRetryLogic";
+import { useAudio } from "./useAudio";
 import { webInfoApi } from "../../services/web-info";
 import { conceptWriterApi } from "../../services/concept-writer";
 import { segmentationApi } from "../../services/segmentationapi";
@@ -24,6 +25,7 @@ export const useChatFlow = () => {
   const modelSelection = useModelSelection();
   const timelineIntegration = useTimelineIntegration();
   const retryLogic = useRetryLogic();
+  const audioHook = useAudio();
 
   // Loading and error states
   const [loading, setLoading] = useState(false);
@@ -36,16 +38,18 @@ export const useChatFlow = () => {
     1: "pending", // user chooses concept
     2: "pending", // script generation
     3: "pending", // user chooses script
-    4: "pending", // image generation
-    5: "pending", // video generation
+    4: "pending", // video generation
+    5: "pending", // audio generation
   });
+
+  // Audio generation states
+  const [showAudioApproval, setShowAudioApproval] = useState(false);
 
   // Content states
   const [concepts, setConcepts] = useState(null);
   const [selectedConcept, setSelectedConcept] = useState(null);
   const [scripts, setScripts] = useState(null);
   const [selectedScript, setSelectedScript] = useState(null);
-  const [generatedImages, setGeneratedImages] = useState({});
   const [generatedVideos, setGeneratedVideos] = useState({});
   const [generationProgress, setGenerationProgress] = useState({});
   const [videoGenerationComplete, setVideoGenerationComplete] = useState(false);
@@ -119,24 +123,20 @@ export const useChatFlow = () => {
       newStepStatus[3] = "pending";
     }
 
-    // Step 4: Image Generation - check if images exist (from API or generation)
-    const hasImages =
-      Object.keys(generatedImages).length > 0 ||
-      selectedScript?.segments?.some(
-        (seg) => seg.s3Key || seg.image_s3_key || seg.imageS3Key,
-      );
-    if (hasImages) {
-      newStepStatus[4] = "done";
-    } else {
-      newStepStatus[4] = "pending";
-    }
-
-    // Step 5: Video Generation - check if videos exist (from API or generation)
+    // Step 4: Video Generation - check if videos exist (from API or generation)
     const hasVideos =
       Object.keys(generatedVideos).length > 0 ||
       Object.keys(timelineIntegration.storedVideosMap).length > 0 ||
       selectedScript?.segments?.some((seg) => seg.videoUrl || seg.video_url);
     if (hasVideos) {
+      newStepStatus[4] = "done";
+    } else {
+      newStepStatus[4] = "pending";
+    }
+
+    // Step 5: Audio Generation - check if audio exists
+    const hasAudio = Object.keys(audioHook.generatedAudios).length > 0;
+    if (hasAudio) {
       newStepStatus[5] = "done";
     } else {
       newStepStatus[5] = "pending";
@@ -149,9 +149,9 @@ export const useChatFlow = () => {
     selectedConcept,
     scripts,
     selectedScript,
-    generatedImages,
     generatedVideos,
     timelineIntegration.storedVideosMap,
+    audioHook.generatedAudios,
   ]);
 
   const resetFlow = useCallback(() => {
@@ -173,10 +173,13 @@ export const useChatFlow = () => {
     setSelectedConcept(null);
     setScripts(null);
     setSelectedScript(null);
-    setGeneratedImages({});
     setGeneratedVideos({});
     setGenerationProgress({});
     setVideoGenerationComplete(false);
+
+    // Reset audio states
+    setShowAudioApproval(false);
+    audioHook.resetAudioState();
 
     // Reset model selections to defaults
     modelSelection.resetModelsToDefaults();
@@ -189,7 +192,7 @@ export const useChatFlow = () => {
     timelineIntegration.resetTimelineStates();
 
     console.log("✅ Chat flow state reset complete");
-  }, [modelSelection, timelineIntegration]);
+  }, [modelSelection, timelineIntegration, audioHook]);
 
   // Helper function to show credit deduction after successful API response
   const showCreditDeduction = useCallback(
@@ -215,27 +218,6 @@ export const useChatFlow = () => {
             credits,
             additionalInfo,
           );
-          break;
-        case "Image Generation":
-          if (model) {
-            credits = getImageCreditCost(model) * count;
-            additionalInfo = `${count} image${
-              count !== 1 ? "s" : ""
-            } using ${model}`;
-            message = formatCreditDeduction(
-              "Image Generation",
-              credits,
-              additionalInfo,
-            );
-          } else {
-            credits = getImageCreditCost("imagen") * count; // default to imagen
-            additionalInfo = `${count} image${count !== 1 ? "s" : ""}`;
-            message = formatCreditDeduction(
-              "Image Generation",
-              credits,
-              additionalInfo,
-            );
-          }
           break;
         case "Video Generation":
           if (model) {
@@ -436,7 +418,8 @@ export const useChatFlow = () => {
     ],
   );
 
-  const runImageGeneration = useCallback(async () => {
+
+  const runVideoGeneration = useCallback(async () => {
     if (!selectedScript) {
       setError("Please select a script first");
       return;
@@ -445,154 +428,6 @@ export const useChatFlow = () => {
     setLoading(true);
     setError(null);
     updateStepStatus(4, "loading");
-    setGenerationProgress({});
-
-    // Don't clear user message immediately - let it stay visible during processing
-
-    try {
-      const segments = selectedScript.segments;
-      const artStyle = selectedScript.artStyle || "";
-      const imagesMap = {};
-
-      console.log(segments);
-
-      // Create parallel promises for all segments
-      const imagePromises = segments.map(async (segment, index) => {
-        setGenerationProgress((prev) => ({
-          ...prev,
-          [segment.id]: {
-            type: "image",
-            status: "generating",
-            index: index + 1,
-            total: segments.length,
-          },
-        }));
-
-        console.log("Image generation request:", {
-          visual_prompt: segment.visual,
-          art_style: artStyle,
-          uuid: segment.id,
-          project_id: selectedProject?.id,
-          model: modelSelection.selectedImageModel,
-        });
-        try {
-          const result = await chatApi.generateImage({
-            visual_prompt: segment.visual,
-            art_style: artStyle,
-            segmentId: segment.id,
-            project_id: selectedProject?.id,
-            model: modelSelection.selectedImageModel,
-          });
-
-          console.log("Image generation response:", result);
-
-          if (result.s3_key) {
-            const imageUrl = await s3Api.downloadImage(result.s3_key);
-            imagesMap[segment.id] = imageUrl;
-            segment.s3Key = result.s3_key;
-
-            setGenerationProgress((prev) => ({
-              ...prev,
-              [segment.id]: {
-                type: "image",
-                status: "completed",
-                index: index + 1,
-                total: segments.length,
-              },
-            }));
-
-            return { segmentId: segment.id, imageUrl, s3Key: result.s3_key };
-          } else {
-            setGenerationProgress((prev) => ({
-              ...prev,
-              [segment.id]: {
-                type: "image",
-                status: "error",
-                index: index + 1,
-                total: segments.length,
-                error: "No image key returned from API",
-              },
-            }));
-            return null;
-          }
-        } catch (err) {
-          console.error(
-            `Error generating image for segment ${segment.id}:`,
-            err,
-          );
-          setGenerationProgress((prev) => ({
-            ...prev,
-            [segment.id]: {
-              type: "image",
-              status: "error",
-              index: index + 1,
-              total: segments.length,
-              error: err.message,
-            },
-          }));
-          return null;
-        }
-      });
-
-      // Wait for all image generation requests to complete
-      await Promise.allSettled(imagePromises);
-
-      // Show credit deduction after successful generation for all segments
-      const totalSegments = segments.length;
-      creditManagement.showCreditDeduction(
-        "Image Generation",
-        modelSelection.selectedImageModel,
-        totalSegments,
-      );
-
-      // Update segments with s3Key for video generation
-      const segmentsWithS3Key = segments.map((segment) => ({
-        ...segment,
-        s3Key: segment.s3Key,
-      }));
-
-      setGeneratedImages(imagesMap);
-
-      // Update selectedScript with the segments that now have s3Key
-      setSelectedScript((prev) => ({
-        ...prev,
-        segments: segmentsWithS3Key,
-      }));
-
-      updateStepStatus(4, "done");
-      setCurrentStep(5);
-
-      // Clear user message after images are generated
-      timelineIntegration.setCurrentUserMessage("");
-
-      // No auto-trigger - user must manually select model and send
-    } catch (error) {
-      console.error("Error in image generation:", error);
-      creditManagement.showRequestFailed("Image Generation");
-      setError(error.message || "Failed to generate images. Please try again.");
-      updateStepStatus(4, "pending");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    selectedScript,
-    selectedProject?.id,
-    updateStepStatus,
-    creditManagement,
-    timelineIntegration,
-    modelSelection,
-  ]);
-
-  const runVideoGeneration = useCallback(async () => {
-    // Check if we have any images available from the API response
-    if (Object.keys(generatedImages).length === 0) {
-      setError("Please generate images first");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    updateStepStatus(5, "loading");
     setGenerationProgress({});
     setVideoGenerationComplete(false);
 
@@ -603,38 +438,11 @@ export const useChatFlow = () => {
       const artStyle = selectedScript.artStyle || "";
       const videosMap = {};
 
-      // Count valid segments (those with images)
-      const validSegments = segments.filter((segment) => {
-        const segmentIdVariants = [
-          segment.id,
-          `seg-${segment.id}`,
-          segment.segmentId,
-          segment.uuid,
-        ];
-        return segmentIdVariants.some((id) => generatedImages[id]);
-      });
+      // Use all segments for video generation
+      const validSegments = segments;
 
-      // Create parallel promises for all valid segments
+      // Create parallel promises for all segments
       const videoPromises = validSegments.map(async (segment, index) => {
-        // Check if this segment has an image in the generatedImages map
-        // Try different segment ID formats to match with generatedImages
-        const segmentIdVariants = [
-          segment.id,
-          `seg-${segment.id}`,
-          segment.segmentId,
-          segment.uuid,
-        ];
-
-        const matchingImageKey = segmentIdVariants.find(
-          (id) => generatedImages[id],
-        );
-        if (!matchingImageKey) {
-          console.log(
-            `Skipping segment ${segment.id} - no image available. Tried IDs:`,
-            segmentIdVariants,
-          );
-          return null;
-        }
 
         setGenerationProgress((prev) => ({
           ...prev,
@@ -647,25 +455,12 @@ export const useChatFlow = () => {
         }));
 
         try {
-          // Extract s3Key from the image URL in generatedImages
-          const imageUrl = generatedImages[matchingImageKey];
-          let imageS3Key = null;
-
-          if (imageUrl && imageUrl.includes("cloudfront.net/")) {
-            // Extract s3Key from CloudFront URL
-            const urlParts = imageUrl.split("cloudfront.net/");
-            if (urlParts.length > 1) {
-              imageS3Key = urlParts[1];
-            }
-          }
-
           console.log(
-            `Generating video for segment ${segment.id} with imageS3Key: ${imageS3Key}`,
+            `Generating video for segment ${segment.id}`,
           );
           const result = await chatApi.generateVideo({
             animation_prompt: segment.animation || segment.visual,
             art_style: artStyle,
-            image_s3_key: imageS3Key,
             segmentId: segment.id,
             project_id: selectedProject?.id,
             model: modelSelection.selectedVideoModel,
@@ -744,7 +539,7 @@ export const useChatFlow = () => {
 
       // Mark video generation as complete
       setVideoGenerationComplete(true);
-      updateStepStatus(5, "done");
+      updateStepStatus(4, "done");
 
       // Clear user message after videos are generated
       timelineIntegration.setCurrentUserMessage("");
@@ -752,12 +547,11 @@ export const useChatFlow = () => {
       console.error("Error in video generation:", error);
       creditManagement.showRequestFailed("Video Generation");
       setError(error.message || "Failed to generate videos. Please try again.");
-      updateStepStatus(5, "pending");
+      updateStepStatus(4, "pending");
     } finally {
       setLoading(false);
     }
   }, [
-    generatedImages,
     selectedScript,
     selectedProject?.id,
     updateStepStatus,
@@ -806,7 +600,7 @@ export const useChatFlow = () => {
         ...prev,
         {
           id: `agent-script-selected-${Date.now()}`,
-          content: `Excellent choice! I'll now generate images for each segment of your script. This will bring your concept to life visually!`,
+          content: `Excellent choice! I'll now generate videos for each segment of your script. This will bring your concept to life with motion and animation!`,
           timestamp: Date.now(),
           type: "system",
         },
@@ -843,7 +637,6 @@ export const useChatFlow = () => {
       const [
         projectDetails,
         projectConcepts,
-        projectImages,
         projectVideos,
         projectSegmentations,
         projectSummaries,
@@ -853,7 +646,6 @@ export const useChatFlow = () => {
           page: 1,
           limit: 50,
         }),
-        projectApi.getProjectImages(selectedProject.id, { page: 1, limit: 50 }),
         projectApi.getProjectVideos(selectedProject.id, { page: 1, limit: 50 }),
         projectApi.getProjectSegmentations(selectedProject.id, {
           page: 1,
@@ -868,7 +660,6 @@ export const useChatFlow = () => {
       console.log("Raw API responses:", {
         projectDetails,
         projectConcepts,
-        projectImages,
         projectVideos,
         projectSegmentations,
         projectSummaries,
@@ -897,7 +688,7 @@ export const useChatFlow = () => {
         setCurrentStep(0);
       }
 
-      // Set segments/scripts if available first (we need this to map images/videos correctly)
+      // Set segments/scripts if available first (we need this to map videos correctly)
       let segments = [];
       if (
         projectSegmentations &&
@@ -916,8 +707,7 @@ export const useChatFlow = () => {
             visual: seg.visual,
             animation: seg.animation,
             narration: seg.narration,
-            s3Key: seg.s3Key || seg.image_s3_key || seg.imageS3Key,
-            imageUrl: seg.imageUrl || seg.image_url,
+            s3Key: seg.s3Key,
             videoUrl: seg.videoUrl || seg.video_url,
           }));
 
@@ -955,46 +745,6 @@ export const useChatFlow = () => {
         setSelectedScript(null);
       }
 
-      // Set images if available - map to segments properly
-      let imagesMap = {};
-      if (
-        projectImages &&
-        projectImages.success &&
-        Array.isArray(projectImages.data) &&
-        projectImages.data.length > 0
-      ) {
-        projectImages.data.forEach((img) => {
-          const segmentId =
-            img.uuid || img.segment_id || img.segmentId || img.id;
-          if (!segmentId) return;
-
-          // Support old s3Key as well as new imageS3Key / imageS3key
-          const key =
-            img.s3Key || img.imageS3Key || img.imageS3key || img.image_s3_key;
-          const imageUrl = key
-            ? `${CLOUDFRONT_URL}/${key}`
-            : img.url || img.imageUrl;
-          if (imageUrl) {
-            imagesMap[segmentId] = imageUrl;
-
-            // update segment data so we can reuse for video generation
-            const segment = segments.find((seg) => seg.id == segmentId);
-            if (segment && !segment.s3Key) {
-              segment.s3Key = key;
-            }
-          }
-        });
-        console.log("Setting generated images:", imagesMap);
-        setGeneratedImages(imagesMap);
-
-        // If we have images, move to step 4 (image generation completed)
-        if (Object.keys(imagesMap).length > 0) {
-          setCurrentStep(4);
-        }
-      } else {
-        console.log("No images found in API response");
-        setGeneratedImages({});
-      }
 
       // Set videos if available - map to segments properly (supports new videoFiles array)
       let videosMap = {};
@@ -1041,13 +791,26 @@ export const useChatFlow = () => {
 
         // If we have videos, move to step 5 (video generation completed)
         if (Object.keys(videosMap).length > 0) {
-          setCurrentStep(5);
+          setCurrentStep(4);
           setVideoGenerationComplete(true);
         }
       } else {
         console.log("No videos found in API response");
         setGeneratedVideos({});
         setStoredVideosMap({});
+      }
+
+      // Load audio history for the project
+      try {
+        const audioHistory = await audioHook.loadAudioHistory(selectedProject.id);
+        if (audioHistory && Object.keys(audioHistory).length > 0) {
+          console.log('✅ Audio history loaded:', audioHistory);
+          // Audio step is complete if we have audio
+          setCurrentStep(Math.max(currentStep, 5));
+        }
+      } catch (audioError) {
+        console.warn('⚠️ Could not load audio history:', audioError.message);
+        // Don't fail the whole project load if audio history fails
       }
 
       // Reset other states
@@ -1059,7 +822,6 @@ export const useChatFlow = () => {
         const hasContent =
           concepts ||
           segments.length > 0 ||
-          Object.keys(imagesMap).length > 0 ||
           Object.keys(videosMap).length > 0;
 
         let statusMessage = `📁 Loaded project: ${projectName}`;
@@ -1068,8 +830,6 @@ export const useChatFlow = () => {
           if (concepts) contentSummary.push(`${concepts.length} concepts`);
           if (segments.length > 0)
             contentSummary.push(`${segments.length} script segments`);
-          if (Object.keys(imagesMap).length > 0)
-            contentSummary.push(`${Object.keys(imagesMap).length} images`);
           if (Object.keys(videosMap).length > 0)
             contentSummary.push(`${Object.keys(videosMap).length} videos`);
 
@@ -1098,15 +858,39 @@ export const useChatFlow = () => {
     }
     }, [selectedProject?.id, resetFlow, timelineIntegration]); // Include resetFlow dependency
 
-  // Handle streaming tool results (concepts, scripts, images, videos)
+  // Handle streaming tool results (concepts, scripts, videos)
   const handleToolResult = useCallback(
     async (result) => {
-      console.log('🎯 handleToolResult called with:', result);
+      console.log('🎯 handleToolResult called with FULL RESULT:', result);
+      console.log('🔍 Complete result structure:', {
+        resultKeys: Object.keys(result),
+        hasData: !!result.data,
+        dataKeys: result.data ? Object.keys(result.data) : [],
+        hasConcepts: !!(result.data?.concepts),
+        conceptsLength: result.data?.concepts?.length,
+        dataStep: result.data?.step,
+        isDataArray: Array.isArray(result.data),
+        dataLength: Array.isArray(result.data) ? result.data.length : 0,
+        // Check if data is at root level
+        rootConcepts: result.concepts,
+        rootScripts: result.scripts,
+        rootSegments: result.segments,
+        // Check for alternative structures
+        toolName: result.toolName,
+        step: result.step,
+        type: result.type
+      });
       
-      // Handle concept generation results
-      if (result.data && result.data.concepts) {
-        console.log('📝 Setting concepts from streaming result:', result.data.concepts);
-        setConcepts(result.data.concepts);
+      // Handle concept generation results - check multiple possible data structures
+      const concepts = result.data?.concepts || 
+                      result.concepts || 
+                      (result.data?.step === 'concept_generation' && result.data?.concepts) ||
+                      (Array.isArray(result.data) && result.data.length > 0 && result.data[0].title ? result.data : null) ||
+                      (Array.isArray(result) && result.length > 0 && result[0].title ? result : null);
+      
+      if (concepts && Array.isArray(concepts) && concepts.length > 0) {
+        console.log('📝 Setting concepts from streaming result:', concepts);
+        setConcepts(concepts);
         updateStepStatus(0, "done");
         setCurrentStep(1);
         
@@ -1115,7 +899,7 @@ export const useChatFlow = () => {
           ...prev,
           {
             id: `agent-concepts-${Date.now()}`,
-            content: `I've generated ${result.data.concepts.length} video concepts for you! Please select the one you'd like to develop:`,
+            content: `I've generated ${concepts.length} video concepts for you! Please select the one you'd like to develop:`,
             timestamp: Date.now(),
             type: "system",
           },
@@ -1125,13 +909,13 @@ export const useChatFlow = () => {
         creditManagement.showCreditDeduction("Concept Writer Process");
       }
       
-      // Also check if result.data has concept array directly
-      if (
+      // Additional check for direct array format (legacy support)
+      else if (
         Array.isArray(result.data) &&
         result.data.length > 0 &&
         result.data[0].title
       ) {
-        console.log('📝 Setting concepts from array format:', result.data);
+        console.log('📝 Setting concepts from direct array format:', result.data);
         setConcepts(result.data);
         updateStepStatus(0, "done");
         setCurrentStep(1);
@@ -1141,7 +925,7 @@ export const useChatFlow = () => {
           ...prev,
           {
             id: `agent-concepts-${Date.now()}`,
-            content: "I've generated 4 video concepts for you! Please select the one you'd like to develop:",
+            content: `I've generated ${result.data.length} video concepts for you! Please select the one you'd like to develop:`,
             timestamp: Date.now(),
             type: "system",
           },
@@ -1151,8 +935,57 @@ export const useChatFlow = () => {
         creditManagement.showCreditDeduction("Concept Writer Process");
       }
       
-      // Handle segmentation results
-      if (result.data && result.data.segments) {
+      // Handle segmentation results - check multiple possible data structures
+      console.log('🔍 Checking for script data:', {
+        hasScripts: !!(result.data?.scripts),
+        isSegmentationStep: result.data?.step === 'segmentation',
+        hasSegments: !!(result.data?.segments),
+        dataKeys: result.data ? Object.keys(result.data) : [],
+        // Check for video data too
+        hasVideoData: !!(result.data?.videoData),
+        isVideoStep: result.data?.step === 'video_generation_segment',
+        hasS3Keys: !!(result.data?.s3Keys),
+        segmentId: result.data?.segmentId
+      });
+      
+      const scripts = result.data?.scripts || 
+                     result.scripts ||
+                     (result.data?.step === 'segmentation' && result.data?.scripts) ||
+                     (result.step === 'segmentation' && result.scripts) ||
+                     (result.data?.segments ? [{ segments: result.data.segments, artStyle: result.data.artStyle || "realistic", concept: result.data.concept || "", summary: result.data.summary || "" }] : null) ||
+                     (result.segments ? [{ segments: result.segments, artStyle: result.artStyle || "realistic", concept: result.concept || "", summary: result.summary || "" }] : null);
+      
+      if (scripts && Array.isArray(scripts) && scripts.length > 0) {
+        console.log('📜 Setting scripts from streaming result:', scripts);
+        
+        // Convert to the format expected by ScriptSelection component
+        const scriptsForSelection = {
+          response1: scripts[0] || null,
+          response2: scripts[1] || scripts[0] || null // Use second script or duplicate first if only one exists
+        };
+        
+        setScripts(scriptsForSelection);
+        updateStepStatus(2, "done");
+        setCurrentStep(3); // Go to script selection step
+        
+        // Add agent message showing scripts
+        timelineIntegration.setAllUserMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-scripts-${Date.now()}`,
+            content: `I've generated ${scripts.length} script option${scripts.length > 1 ? 's' : ''} for you! Please select the one you'd like to use:`,
+            timestamp: Date.now(),
+            type: "system",
+          },
+        ]);
+        
+        // Show credit deduction for script generation
+        creditManagement.showCreditDeduction("Script Generation", null, 1);
+      }
+      
+      // Legacy support: Handle segmentation results with segments directly
+      else if (result.data && result.data.segments) {
+        console.log('📜 Setting scripts from legacy segments format:', result.data.segments);
         // Create script object from the segments data
         const script = {
           segments: result.data.segments,
@@ -1170,8 +1003,88 @@ export const useChatFlow = () => {
         updateStepStatus(2, "done");
         setCurrentStep(3); // Go to script selection step
         
+        // Add agent message showing scripts
+        timelineIntegration.setAllUserMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-scripts-${Date.now()}`,
+            content: "I've generated script segments for you! Please select the one you'd like to use:",
+            timestamp: Date.now(),
+            type: "system",
+          },
+        ]);
+        
         // Show credit deduction for script generation
         creditManagement.showCreditDeduction("Script Generation", null, 1);
+      }
+      
+      // Handle video generation results - individual segment completion
+      if (result.data?.step === 'video_generation_segment' || result.step === 'video_generation_segment') {
+        const segmentId = result.data?.segmentId || result.segmentId;
+        const videoData = result.data?.videoData || result.videoData;
+        const s3Keys = result.data?.s3Keys || result.s3Keys || [];
+        
+        console.log('🎬 Processing individual video segment completion:', {
+          segmentId,
+          hasVideoData: !!videoData,
+          s3KeysCount: s3Keys.length,
+          s3Keys
+        });
+        
+        if (segmentId && videoData && s3Keys.length > 0) {
+          // Process the video completion similar to handleIndividualVideoCompletion
+          try {
+            const s3Key = s3Keys[0]; // Use the first S3 key
+            console.log(`🎬 Processing video for segment ${segmentId} with S3 key:`, s3Key);
+            
+            // Convert S3 key to CloudFront URL (using the s3Api service)
+            const videoUrl = await s3Api.downloadVideo(s3Key);
+            console.log(`Generated video URL for segment ${segmentId}:`, videoUrl);
+            
+            // Update generated videos immediately
+            setGeneratedVideos((prev) => {
+              const newVideos = { ...prev, [segmentId]: videoUrl };
+              console.log("Updated generated videos (individual segment):", newVideos);
+              return newVideos;
+            });
+            
+            // Update stored videos map for timeline
+            setStoredVideosMap((prev) => {
+              const updated = { ...prev, [segmentId]: videoUrl };
+              console.log("Updated stored videos map (individual segment):", updated);
+              return updated;
+            });
+            
+            // Video completed - no message needed
+            
+            // Trigger scroll to bottom to show new video
+            setTimeout(() => {
+              window.dispatchEvent(
+                new CustomEvent("scrollChatToBottom", {
+                  detail: {
+                    reason: "video_segment_completed",
+                    segmentId: segmentId,
+                    timestamp: Date.now(),
+                  },
+                }),
+              );
+            }, 200);
+            
+          } catch (error) {
+            console.error(`Failed to process video for segment ${segmentId}:`, error);
+            
+            // Add error message to chat
+            timelineIntegration.setAllUserMessages((prev) => [
+              ...prev,
+              {
+                id: `video-error-${segmentId}-${Date.now()}`,
+                content: `❌ Failed to process video for segment ${segmentId}`,
+                timestamp: Date.now(),
+                type: "system",
+              },
+            ]);
+          }
+        }
       }
       
       console.log('✅ handleToolResult completed');
@@ -1183,6 +1096,8 @@ export const useChatFlow = () => {
       timelineIntegration,
       creditManagement,
       setScripts,
+      setGeneratedVideos,
+      setStoredVideosMap,
     ],
   );
 
@@ -1191,7 +1106,6 @@ export const useChatFlow = () => {
     async (userInput) => {
       const callbacks = {
         setAllUserMessages: timelineIntegration.setAllUserMessages,
-        setGeneratedImages,
         setGeneratedVideos,
         selectedProject,
         handleToolResult,
@@ -1207,7 +1121,7 @@ export const useChatFlow = () => {
         callbacks,
       );
     },
-    [agentStreaming, user, selectedProject, timelineIntegration, setGeneratedImages, setGeneratedVideos, handleToolResult],
+    [agentStreaming, user, selectedProject, timelineIntegration, setGeneratedVideos, handleToolResult],
   );
 
   // Enhanced approval functions that include all necessary parameters
@@ -1221,10 +1135,8 @@ export const useChatFlow = () => {
         selectedProject,
         selectedConcept,
         selectedScript,
-        generatedImages,
         modelSelection.selectedConceptModel,
         modelSelection.selectedScriptModel,
-        modelSelection.selectedImageModel,
         modelSelection.selectedVideoModel,
         timelineIntegration.setAllUserMessages,
         setError,
@@ -1236,7 +1148,6 @@ export const useChatFlow = () => {
       selectedProject,
       selectedConcept,
       selectedScript,
-      generatedImages,
       modelSelection,
       timelineIntegration,
       setError,
@@ -1254,6 +1165,75 @@ export const useChatFlow = () => {
     [agentStreaming, user, setError],
   );
 
+  // Audio generation functions
+  const triggerAudioApproval = useCallback(() => {
+    console.log('🎤 Triggering audio approval UI');
+    setShowAudioApproval(true);
+    
+    
+  }, [timelineIntegration]);
+
+  const handleAudioApproval = useCallback(async (voiceId, voiceModel) => {
+    console.log('🎤 Audio generation approved:', { voiceId, voiceModel });
+    
+    // Hide approval UI
+    setShowAudioApproval(false);
+    
+    
+
+    // Start audio generation
+    try {
+      await audioHook.generateAudioForSegments(
+        selectedScript?.segments || [],
+        selectedProject?.id,
+        generatedVideos,
+        voiceId, // Pass the selected voice ID
+        // onProgress callback
+        (progress) => {
+          console.log('🎤 Audio generation progress:', progress);
+        },
+        // onComplete callback
+        (completion) => {
+          console.log('🎤 Audio segment completed:', completion);
+          
+          
+        },
+        // onError callback
+        (error) => {
+          console.error('❌ Audio generation error:', error);
+        }
+      );
+      
+      
+      
+    } catch (error) {
+      console.error('❌ Audio generation process failed:', error);
+      setError(`Audio generation failed: ${error.message}`);
+    }
+  }, [
+    selectedScript,
+    selectedProject,
+    generatedVideos,
+    audioHook,
+    timelineIntegration,
+    setError,
+  ]);
+
+  const cancelAudioApproval = useCallback(() => {
+    console.log('🎤 Audio generation cancelled');
+    setShowAudioApproval(false);
+    
+    timelineIntegration.setAllUserMessages((prev) => [
+      ...prev,
+      {
+        id: `audio-cancelled-${Date.now()}`,
+        content: "Audio generation cancelled.",
+        timestamp: Date.now(),
+        type: "system",
+      },
+    ]);
+  }, [timelineIntegration]);
+
   return {
     // Core States
     loading,
@@ -1268,7 +1248,6 @@ export const useChatFlow = () => {
     selectedConcept,
     scripts,
     selectedScript,
-    generatedImages,
     generatedVideos,
     generationProgress,
     videoGenerationComplete,
@@ -1278,13 +1257,16 @@ export const useChatFlow = () => {
     ...creditManagement,
     ...timelineIntegration,
     ...agentStreaming,
+    ...audioHook,
+
+    // Audio-specific states
+    showAudioApproval,
 
     // Core Actions
     resetFlow,
     updateStepStatus,
     runConceptWriter,
     runScriptGeneration,
-    runImageGeneration,
     runVideoGeneration,
     handleConceptSelect,
     handleScriptSelect,
@@ -1294,5 +1276,10 @@ export const useChatFlow = () => {
     startAgentStream: startAgentStreamWithCallbacks,
     approveToolExecution: approveToolExecutionWithCallbacks,
     rejectToolExecution: rejectToolExecutionWithCallbacks,
+
+    // Audio generation actions
+    triggerAudioApproval,
+    handleAudioApproval,
+    cancelAudioApproval,
   };
 };

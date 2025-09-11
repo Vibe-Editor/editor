@@ -7,6 +7,7 @@ export const useTimelineIntegration = () => {
   
   // Timeline states
   const [addingTimeline, setAddingTimeline] = useState(false);
+  const [addingAudioTimeline, setAddingAudioTimeline] = useState(false);
   const [currentUserMessage, setCurrentUserMessage] = useState("");
   const [messageCounter, setMessageCounter] = useState(0);
   const [allUserMessages, setAllUserMessages] = useState([]);
@@ -14,6 +15,7 @@ export const useTimelineIntegration = () => {
   // Reset timeline states
   const resetTimelineStates = () => {
     setAddingTimeline(false);
+    setAddingAudioTimeline(false);
     setCurrentUserMessage("");
     setMessageCounter(0);
     setAllUserMessages([]);
@@ -27,6 +29,7 @@ export const useTimelineIntegration = () => {
   return {
     // States
     addingTimeline,
+    addingAudioTimeline,
     currentUserMessage,
     messageCounter,
     allUserMessages,
@@ -34,6 +37,7 @@ export const useTimelineIntegration = () => {
 
     // Setters
     setAddingTimeline,
+    setAddingAudioTimeline,
     setCurrentUserMessage,
     setMessageCounter,
     setAllUserMessages,

@@ -378,3 +378,211 @@ ipcMain.handle("extension:timeline:addFromDir", async (_evt, dirPath: string) =>
   mainWindow.webContents.send("timeline:add", timeline);
   return { status: 1 };
 });
+
+// -------------------- AUDIO timeline handlers --------------------
+
+console.log('🎤 Registering audio timeline handlers...');
+
+ipcMain.handle("extension:timeline:addAudioByUrl", async (_evt, list: {id:number,url:string}[]) => {
+  console.log('🎤 Audio Timeline received audio files:', list);
+  
+  const timeline:any = {};
+  let cursor = 0;
+
+  // Sort the list by ID to ensure correct sequence in timeline
+  const sortedList = [...list].sort((a, b) => {
+    const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id).replace(/[^0-9]/g, '')) || 0;
+    const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id).replace(/[^0-9]/g, '')) || 0;
+    return idA - idB;
+  });
+  
+  console.log('🎤 Audio Timeline sorted audio files:', sortedList);
+
+  for (let idx = 0; idx < sortedList.length; idx++) {
+    const item = sortedList[idx] as any;
+    const { id, url } = item;
+    
+    // Download the audio file
+    const tempPath = path.join(tmpdir(), `audio-${id}-${Date.now()}.mp3`);
+    try {
+      await new Promise((resolve, reject) => {
+        const file = createWriteStream(tempPath);
+        https.get(url, (response) => {
+          response.pipe(file);
+          file.on('finish', () => {
+            file.close();
+            resolve(undefined);
+          });
+        }).on('error', (err) => {
+          fs.unlink(tempPath, () => {}); // Delete the file on error
+          reject(err);
+        });
+      });
+    } catch (e) {
+      console.error(`Failed to download audio ${id}:`, e);
+      continue;
+    }
+
+    // Probe duration
+    let durationSeconds = 5;
+    try {
+      const metadata: any = await new Promise((res, rej) => {
+        ffmpeg.ffprobe(tempPath, (err, data) => {
+          if (err) rej(err);
+          else res(data);
+        });
+      });
+      const dur = parseFloat(metadata?.format?.duration);
+      if (!Number.isNaN(dur) && dur > 0) durationSeconds = dur;
+    } catch (e) {
+      console.warn("ffprobe failed for audio", e);
+    }
+
+    const duration = Math.round(durationSeconds * 1000); // convert to ms for timeline
+
+    const key = `audio-${id}`;
+    const elementObj = {
+      filetype: "audio",
+      key,
+      localpath: tempPath,
+      blob: "",
+      priority: 0,
+      track: 1, // Audio goes to track 1
+      startTime: cursor,
+      duration,
+      location: { x: 0, y: 0 },
+      timelineOptions: { color: "rgb(133, 179, 59)" }, // Green color for audio
+      width: 0, // Audio doesn't have width
+      height: 0, // Audio doesn't have height
+      ratio: 0, // Audio doesn't have aspect ratio
+      opacity: 100,
+      rotation: 0,
+      animation: {
+        opacity: { isActivate:false, x:[], ax:[] },
+        position: { isActivate:false, x:[], y:[], ax:[], ay:[] },
+        scale: { isActivate:false, x:[], ax:[] },
+        rotation: { isActivate:false, x:[], ax:[] }
+      },
+      trim: { startTime: 0, endTime: duration },
+      isExistAudio: true,
+      codec: { video: "", audio: "" },
+      speed: 1,
+      filter: { enable:false, list:[] },
+      origin: { width:0, height:0 }
+    };
+    cursor += duration;
+
+    // Send each element immediately so timeline updates progressively
+    mainWindow.webContents.send("timeline:add", { [key]: elementObj });
+    console.log("[ipcTimeline] SENT audio timeline:add", key, "start=", elementObj.startTime, "dur(ms)=", elementObj.duration);
+
+    timeline[key] = elementObj;
+  }
+
+  mainWindow.webContents.send("timeline:add", timeline);
+  console.log("[ipcTimeline] SENT audio timeline:add batch", Object.keys(timeline));
+  return { status: 1 };
+});
+
+console.log('🎤 Registering addAudioByUrlWithDir handler...');
+
+ipcMain.handle("extension:timeline:addAudioByUrlWithDir", async (_evt, list: {id:number,url:string}[]) => {
+  console.log('🎤 Audio Timeline (with dir) received audio files:', list);
+  
+  const timeline:any = {};
+  let cursor = 0;
+
+  // Sort the list by ID to ensure correct sequence in timeline
+  const sortedList = [...list].sort((a, b) => {
+    const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id).replace(/[^0-9]/g, '')) || 0;
+    const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id).replace(/[^0-9]/g, '')) || 0;
+    return idA - idB;
+  });
+  
+  console.log('🎤 Audio Timeline sorted audio files:', sortedList);
+
+  for (let idx = 0; idx < sortedList.length; idx++) {
+    const item = sortedList[idx] as any;
+    const { id, url } = item;
+    
+    // Download the audio file
+    const tempPath = path.join(tmpdir(), `audio-${id}-${Date.now()}.mp3`);
+    try {
+      await new Promise((resolve, reject) => {
+        const file = createWriteStream(tempPath);
+        https.get(url, (response) => {
+          response.pipe(file);
+          file.on('finish', () => {
+            file.close();
+            resolve(undefined);
+          });
+        }).on('error', (err) => {
+          fs.unlink(tempPath, () => {}); // Delete the file on error
+          reject(err);
+        });
+      });
+    } catch (e) {
+      console.error(`Failed to download audio ${id}:`, e);
+      continue;
+    }
+
+    // Probe duration
+    let durationSeconds = 5;
+    try {
+      const metadata: any = await new Promise((res, rej) => {
+        ffmpeg.ffprobe(tempPath, (err, data) => {
+          if (err) rej(err);
+          else res(data);
+        });
+      });
+      const dur = parseFloat(metadata?.format?.duration);
+      if (!Number.isNaN(dur) && dur > 0) durationSeconds = dur;
+    } catch (e) {
+      console.warn("ffprobe failed for audio", e);
+    }
+
+    const duration = Math.round(durationSeconds * 1000); // convert to ms for timeline
+
+    const key = `audio-${id}`;
+    const elementObj = {
+      filetype: "audio",
+      key,
+      localpath: tempPath,
+      blob: tempPath,
+      priority: 0,
+      track: 1, // Audio goes to track 1
+      startTime: cursor,
+      duration,
+      location: { x: 0, y: 0 },
+      timelineOptions: { color: "rgb(133, 179, 59)" }, // Green color for audio
+      width: 0, // Audio doesn't have width
+      height: 0, // Audio doesn't have height
+      ratio: 0, // Audio doesn't have aspect ratio
+      opacity: 100,
+      rotation: 0,
+      animation: {
+        opacity: { isActivate: false, x: [], ax: [] },
+        position: { isActivate: false, x: [], y: [], ax: [], ay: [] },
+        scale: { isActivate: false, x: [], ax: [] },
+        rotation: { isActivate: false, x: [], ax: [] },
+      },
+      trim: { startTime: 0, endTime: duration },
+      isExistAudio: true,
+      codec: { video: "", audio: "" },
+      speed: 1,
+      filter: { enable: false, list: [] },
+      origin: { width: 0, height: 0 },
+    };
+    cursor += duration;
+
+    // Send each element immediately so timeline updates progressively
+    mainWindow.webContents.send("timeline:add", { [key]: elementObj });
+    console.log("[ipcTimeline] SENT audio timeline:add", key, "start=", elementObj.startTime, "dur(ms)=", elementObj.duration);
+
+    timeline[key] = elementObj;
+  }
+
+  mainWindow.webContents.send("timeline:add", timeline);
+  console.log("[ipcTimeline] SENT audio timeline:add batch", Object.keys(timeline));
+  return { status: 1 };
+});
