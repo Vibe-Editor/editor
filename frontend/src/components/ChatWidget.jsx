@@ -404,6 +404,34 @@ function ChatWidgetSidebar({ open, setOpen }) {
     [chatFlow, timeline, combinedVideosMap],
   );
 
+  // Audio timeline functions
+  const sendAudiosToTimeline = useCallback(async () => {
+    if (chatFlow.addingAudioTimeline) return;
+
+    chatFlow.setAddingAudioTimeline(true);
+    const success = await timeline.sendAudiosToTimeline(
+      chatFlow.selectedScript,
+      chatFlow.generatedAudios || {},
+      chatFlow.setError,
+    );
+    chatFlow.setAddingAudioTimeline(false);
+  }, [chatFlow, timeline]);
+
+  const addSingleAudioToTimeline = useCallback(
+    async (segmentId) => {
+      if (chatFlow.addingAudioTimeline) return;
+
+      chatFlow.setAddingAudioTimeline(true);
+      const success = await timeline.addSingleAudioToTimeline(
+        segmentId,
+        chatFlow.generatedAudios || {},
+        chatFlow.setError,
+      );
+      chatFlow.setAddingAudioTimeline(false);
+    },
+    [chatFlow, timeline],
+  );
+
   // Modal handlers
   const handleVideoClick = useCallback((videoUrl) => {
     setModalVideoUrl(videoUrl);
@@ -507,6 +535,8 @@ function ChatWidgetSidebar({ open, setOpen }) {
                 onVideoClick={handleVideoClick}
                 onAddSingleVideo={addSingleVideoToTimeline}
                 sendVideosToTimeline={sendVideosToTimeline}
+                sendAudiosToTimeline={sendAudiosToTimeline}
+                addSingleAudioToTimeline={addSingleAudioToTimeline}
                 combinedVideosMap={combinedVideosMap}
                 currentPrompt={prompt}
               />

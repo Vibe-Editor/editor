@@ -269,21 +269,7 @@ const AudioGeneration = ({
         <AudioTimelineButton
           canSendAudioTimeline={true}
           addingAudioTimeline={addingAudioTimeline}
-          onSendAudioToTimeline={() => {
-            console.log('🎤 Adding all audio segments to timeline');
-            if (onAddAudioToTimeline) {
-              // Sort audio entries by segment number and add them in order
-              const sortedAudioEntries = audioEntries.sort(([a], [b]) => {
-                const aNum = parseInt(a.replace(/\D/g, '')) || 0;
-                const bNum = parseInt(b.replace(/\D/g, '')) || 0;
-                return aNum - bNum;
-              });
-              
-              sortedAudioEntries.forEach(([segmentId, audioData], index) => {
-                onAddAudioToTimeline(audioData, index + 1);
-              });
-            }
-          }}
+          onSendAudioToTimeline={onAddAudioToTimeline}
           audioCount={audioEntries.length}
         />
       </div>

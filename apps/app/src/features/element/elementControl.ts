@@ -785,7 +785,7 @@ export class ElementControl extends LitElement {
         localpath: path,
         filetype: "audio",
         speed: 1,
-        track: 0, // Initialize track property for row placement
+        track: 1, // Audio goes to track 1
         timelineOptions: {
           color: "rgb(133, 179, 59)",
         },
@@ -813,7 +813,7 @@ export class ElementControl extends LitElement {
       localpath: path,
       filetype: "audio",
       speed: 1,
-      track: 0, // Initialize track property for row placement
+      track: 1, // Audio goes to track 1
       timelineOptions: {
         color: "rgb(133, 179, 59)",
       },

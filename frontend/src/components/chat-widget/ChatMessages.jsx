@@ -50,6 +50,8 @@ const ChatMessages = ({
   onVideoClick,
   onAddSingleVideo,
   sendVideosToTimeline,
+  sendAudiosToTimeline,
+  addSingleAudioToTimeline,
   combinedVideosMap,
   currentPrompt = "",
 }) => {
@@ -426,10 +428,7 @@ const ChatMessages = ({
         component: (
           <AudioGeneration
             chatFlow={chatFlow}
-            onAddAudioToTimeline={(audioData, segmentNumber) => {
-              console.log('🎤 Add audio to timeline:', { audioData, segmentNumber });
-              // TODO: Implement audio timeline integration
-            }}
+            onAddAudioToTimeline={sendAudiosToTimeline}
             showApproval={chatFlow.showAudioApproval}
             onApprove={(voiceId, voiceModel) => {
               console.log('🎤 Audio generation approved:', { voiceId, voiceModel });
