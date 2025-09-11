@@ -443,38 +443,39 @@ const ChatMessages = ({
                 chatFlow.cancelAudioApproval();
               }
             }}
+            addingAudioTimeline={chatFlow.addingAudioTimeline || false}
           />
         ),
         timestamp: audioTimestamp,
       });
     }
 
-    // Add timeline integration component
-    const canSendTimeline =
+    // Add video timeline integration component (only for videos, not audio)
+    const canSendVideoTimeline =
       Object.keys(chatFlow.generatedVideos || {}).length > 0 ||
       Object.keys(chatFlow.storedVideosMap || {}).length > 0 ||
       Object.keys(combinedVideosMap || {}).length > 0;
 
-    if (canSendTimeline) {
+    if (canSendVideoTimeline) {
       // Detect if this is a history project
       const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
         (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
       
-      // For history projects, ensure timeline appears after audio component
+      // For history projects, ensure timeline appears after video component but before audio
       const baseTime = Date.now();
       const timelineTimestamp = videoCompletionMessage ? 
-        videoCompletionMessage.timestamp + 300 : 
+        videoCompletionMessage.timestamp + 200 : 
         (isHistoryProject ? 
-          baseTime - 100 : // History: after audio (which uses baseTime - 300)
-          baseTime + 1800); // Generation: after audio (which uses baseTime + 1200)
+          baseTime - 400 : // History: after video (which uses baseTime - 500) but before audio
+          baseTime + 1100); // Generation: after video (which uses baseTime + 1000) but before audio
       orderedMessages.push({
-        id: "timeline-integration",
+        id: "video-timeline-integration",
         type: "system",
         content: "",
         component: (
           <div>
             <TimelineButton
-              canSendTimeline={canSendTimeline}
+              canSendTimeline={canSendVideoTimeline}
               addingTimeline={chatFlow.addingTimeline}
               onSendToTimeline={sendVideosToTimeline}
               inConversation={true}
@@ -508,7 +509,7 @@ const ChatMessages = ({
     
     // 🎯 AUTO-SCROLL: If we have new video content, scroll to bottom
     const hasVideos = Object.keys(combinedVideosMap || {}).length > 0;
-    if (hasVideos && sortedMessages.some(msg => msg.id === "video-generation" || msg.id === "timeline-integration")) {
+    if (hasVideos && sortedMessages.some(msg => msg.id === "video-generation" || msg.id === "video-timeline-integration")) {
       setTimeout(() => {
         scrollToBottom();
       }, 200); // Delay to ensure video components are rendered
@@ -549,7 +550,7 @@ const ChatMessages = ({
               message.id === "script-request" ||
               message.id === "video-generation" ||
               message.id === "audio-generation" ||
-              message.id === "timeline-integration"
+              message.id === "video-timeline-integration"
                 ? "w-full p-0" // Full width and no padding/background for component messages
                 : `max-w-[80%] p-2.5 text-white rounded-lg backdrop-blur-sm ${ 
                     message.type === "user" 

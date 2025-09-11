@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import AudioPlayer from './AudioPlayer';
+import AudioTimelineButton from './AudioTimelineButton';
 
 /**
  * Audio Generation Component
@@ -10,7 +11,8 @@ const AudioGeneration = ({
   onAddAudioToTimeline,
   showApproval = false,
   onApprove = () => {},
-  onCancel = () => {}
+  onCancel = () => {},
+  addingAudioTimeline = false
 }) => {
   const [selectedVoiceId, setSelectedVoiceId] = useState('EkK5I93UQWFDigLMpZcX'); // James (Default)
   const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState(false);
@@ -259,10 +261,31 @@ const AudioGeneration = ({
                 key={segmentId}
                 audioData={audioData}
                 segmentNumber={index + 1}
-                onAddToTimeline={onAddAudioToTimeline}
               />
             ))}
         </div>
+        
+        {/* Audio Timeline Button */}
+        <AudioTimelineButton
+          canSendAudioTimeline={true}
+          addingAudioTimeline={addingAudioTimeline}
+          onSendAudioToTimeline={() => {
+            console.log('🎤 Adding all audio segments to timeline');
+            if (onAddAudioToTimeline) {
+              // Sort audio entries by segment number and add them in order
+              const sortedAudioEntries = audioEntries.sort(([a], [b]) => {
+                const aNum = parseInt(a.replace(/\D/g, '')) || 0;
+                const bNum = parseInt(b.replace(/\D/g, '')) || 0;
+                return aNum - bNum;
+              });
+              
+              sortedAudioEntries.forEach(([segmentId, audioData], index) => {
+                onAddAudioToTimeline(audioData, index + 1);
+              });
+            }
+          }}
+          audioCount={audioEntries.length}
+        />
       </div>
     );
   }

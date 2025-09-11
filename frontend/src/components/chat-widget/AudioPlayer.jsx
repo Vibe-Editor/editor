@@ -182,14 +182,6 @@ const AudioPlayer = ({
         <span className='bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs'>
           Segment {segmentNumber}
         </span>
-        <span className='text-gray-400 text-xs'>
-          Voice-over Audio
-        </span>
-        {audioData?.model && (
-          <span className='text-gray-500 text-xs'>
-            • {audioData.model}
-          </span>
-        )}
       </div>
 
       {/* Waveform Canvas */}
@@ -266,25 +258,6 @@ const AudioPlayer = ({
         </div>
       </div>
 
-      {/* Add to Timeline Button */}
-      {onAddToTimeline && (
-        <div className='mt-3 pt-3 border-t border-gray-700/30'>
-          <button
-            onClick={() => onAddToTimeline(audioData, segmentNumber)}
-            disabled={isLoading || error}
-            className='w-full py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-300 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium'
-          >
-            Add to Timeline
-          </button>
-        </div>
-      )}
-
-      {/* Credit Usage Info */}
-      {audioData?.credits && (
-        <div className='mt-2 text-gray-500 text-xs'>
-          Credits used: {audioData.credits.used} • Balance: {audioData.credits.balance}
-        </div>
-      )}
     </div>
   );
 };
