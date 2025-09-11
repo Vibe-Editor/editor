@@ -31,9 +31,9 @@ const TimelineButton = ({
             />
           </svg>
           {addingTimeline ? (
-            <span>Adding to timeline...</span>
+            <span>Adding video to timeline...</span>
           ) : (
-            <span>Add to the timeline</span>
+            <span>Add video to the timeline</span>
           )}
         </div>
       </div>
@@ -63,9 +63,9 @@ const TimelineButton = ({
           />
         </svg>
         {addingTimeline ? (
-          <span>Adding to timeline...</span>
+          <span>Adding video to timeline...</span>
         ) : (
-          <span>Add to the timeline</span>
+          <span>Add video to the timeline</span>
         )}
       </div>
     </div>
