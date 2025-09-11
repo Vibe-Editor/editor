@@ -23,9 +23,9 @@ export default function InputArea({
     "gemini-pro": { label: "Gemini Pro", tokens: "4", time: "4" },
     "recraft-v3": { label: "Recraft", tokens: "1", time: "4" },
     imagen: { label: "Imagen", tokens: "2", time: "2" },
-    "gen4_turbo": { label: "RunwayML", tokens: "2.5", time: "3" },
+    gen4_turbo: { label: "RunwayML", tokens: "2.5", time: "3" },
     "kling-v2.1-master": { label: "Kling", tokens: "20", time: "4" },
-    "veo3": { label: "veo3", tokens: "37", time: "5" },
+    veo3: { label: "veo3", tokens: "37", time: "5" },
   };
 
   // Get available models based on flow state
@@ -282,6 +282,37 @@ export default function InputArea({
     availableModels.find((model) => model.value === selectedModel) ||
     availableModels[0];
 
+  // Check if this is a history project (has selectedScript but no scripts being generated)
+  const isHistoryProject = chatFlow?.selectedScript && chatFlow?.selectedScript.segments && 
+    (!chatFlow?.scripts || (!chatFlow?.scripts.response1 && !chatFlow?.scripts.response2));
+
+  // Check if audio generation is available (videos must be completed first, and not a history project)
+  const canGenerateAudio = !isHistoryProject &&
+    chatFlow?.selectedScript?.segments && 
+    Object.keys(chatFlow?.generatedVideos || {}).length > 0 &&
+    !chatFlow?.audioGenerationLoading &&
+    !chatFlow?.showAudioApproval;
+
+  // Handle microphone icon click
+  const handleMicrophoneClick = () => {
+    if (isHistoryProject) {
+      console.log('🎤 Audio generation not available for history projects');
+      return;
+    }
+
+    if (!canGenerateAudio) {
+      console.log('🎤 Audio generation not available yet - need to complete video generation first');
+      return;
+    }
+
+    console.log('🎤 Microphone clicked - requesting audio generation approval');
+    
+    // Trigger audio generation approval
+    if (chatFlow?.triggerAudioApproval) {
+      chatFlow.triggerAudioApproval();
+    }
+  };
+
   // Authenticated + project selected → show input
   return (
     <div className='p-2 sm:p-3'>
@@ -513,28 +544,7 @@ export default function InputArea({
                   </defs>
                 </svg>
 
-                {/* Icon 2 - Settings/Options - Hidden on mobile */}
-                <div className='hidden sm:block'>
-                  <svg
-                    width='28'
-                    height='28'
-                    viewBox='0 0 28 28'
-                    fill='none'
-                    xmlns='http://www.w3.org/2000/svg'
-                    className='w-6 h-6 sm:w-7 sm:h-7'
-                  >
-                    <path
-                      d='M8.66699 14H15.0003M8.66699 18H12.667M8.66699 10H19.3337M15.3337 19.3333H15.3403M18.0003 14.6667C17.5753 15.7443 17.1076 16.23 16.0003 16.6667C17.1076 17.1034 17.5753 17.589 18.0003 18.6667C18.4253 17.589 18.8931 17.1034 20.0003 16.6667C18.8931 16.23 18.4253 15.7443 18.0003 14.6667Z'
-                      stroke='white'
-                      strokeOpacity='0.5'
-                      strokeWidth='1.5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                  </svg>
-                </div>
-
-                {/* Icon 3 - Attachment - Hidden on mobile */}
+                {/* Icon 2 - Attachment - Hidden on mobile */}
                 <div className='hidden sm:block'>
                   <svg
                     width='28'
@@ -552,6 +562,35 @@ export default function InputArea({
                       strokeLinecap='round'
                       strokeLinejoin='round'
                     />
+                  </svg>
+                </div>
+
+                {/* Icon 3 - Audio generation*/}
+                <div 
+                  className='hidden sm:block cursor-pointer'
+                  onClick={handleMicrophoneClick}
+                  title={
+                    isHistoryProject 
+                      ? 'Audio generation not available for history projects' 
+                      : canGenerateAudio 
+                        ? 'Generate voice-over' 
+                        : 'Complete video generation first'
+                  }
+                >
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='28'
+                    height='28'
+                    fill='currentColor'
+                    className={`w-6 h-6 mt-2 ml-1 sm:w-7 sm:h-7 transition-colors ${
+                      canGenerateAudio 
+                        ? 'text-cyan-400 hover:text-cyan-300' 
+                        : 'text-gray-600 cursor-not-allowed'
+                    }`}
+                    viewBox='0 0 16 16'
+                  >
+                    <path d='M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5' />
+                    <path d='M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3' />
                   </svg>
                 </div>
 

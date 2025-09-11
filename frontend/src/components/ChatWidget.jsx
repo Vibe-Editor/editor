@@ -66,6 +66,11 @@ function ChatWidgetSidebar({ open, setOpen }) {
       name: "Video Generation",
       description: "Generate videos from script",
     },
+    {
+      id: 5,
+      name: "Audio Generation",
+      description: "Generate voice-over audio",
+    },
   ];
 
   // Force re-render state for videos
@@ -218,6 +223,16 @@ function ChatWidgetSidebar({ open, setOpen }) {
         return !chatFlow.selectedScript || !chatFlow.selectedScript.segments;
       if (stepId === 4)
         return !chatFlow.selectedScript || !chatFlow.selectedScript.segments;
+      if (stepId === 5) {
+        // Check if this is a history project
+        const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+          (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+        
+        return isHistoryProject || 
+               !chatFlow.selectedScript || 
+               !chatFlow.selectedScript.segments || 
+               Object.keys(chatFlow.generatedVideos || {}).length === 0;
+      }
       return true;
     },
     [
@@ -225,6 +240,8 @@ function ChatWidgetSidebar({ open, setOpen }) {
       chatFlow.concepts,
       chatFlow.selectedConcept,
       chatFlow.selectedScript,
+      chatFlow.scripts,
+      chatFlow.generatedVideos,
     ],
   );
 
@@ -245,6 +262,10 @@ function ChatWidgetSidebar({ open, setOpen }) {
             break;
           case 4:
             await chatFlow.runVideoGeneration();
+            break;
+          case 5:
+            // Trigger audio generation approval
+            chatFlow.triggerAudioApproval();
             break;
         }
       }
@@ -273,6 +294,10 @@ function ChatWidgetSidebar({ open, setOpen }) {
           break;
         case 2:
           await chatFlow.runScriptGeneration(prompt);
+          break;
+        case 5:
+          // Trigger audio generation approval for redo
+          chatFlow.triggerAudioApproval();
           break;
       }
     },

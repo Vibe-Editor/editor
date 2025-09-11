@@ -4,6 +4,7 @@ import ScriptSelection from "./ScriptSelection";
 import MediaGeneration from "./MediaGeneration";
 import TimelineButton from "./TimelineButton";
 import VerboseAgentLoader from "./VerboseAgentLoader";
+import AudioGeneration from "./AudioGeneration";
 
 
 // Dynamic video generation component that always shows current state
@@ -399,6 +400,55 @@ const ChatMessages = ({
       });
     }
 
+    // Add audio generation component - show after video generation is complete
+    const hasGeneratedVideos = Object.keys(chatFlow.generatedVideos || {}).length > 0 ||
+      Object.keys(chatFlow.storedVideosMap || {}).length > 0;
+    
+    const showAudioGeneration = hasGeneratedVideos && chatFlow.selectedScript && chatFlow.selectedScript.segments;
+    
+    if (showAudioGeneration) {
+      // Detect if this is a history project
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
+      // For history projects, ensure audio appears after video component
+      const baseTime = Date.now();
+      const audioTimestamp = videoCompletionMessage ? 
+        videoCompletionMessage.timestamp + 200 : 
+        (isHistoryProject ? 
+          baseTime - 300 : // History: after video (which uses baseTime - 500)
+          baseTime + 1200); // Generation: after video (which uses baseTime + 1000)
+      
+      orderedMessages.push({
+        id: "audio-generation",
+        type: "system",
+        content: "",
+        component: (
+          <AudioGeneration
+            chatFlow={chatFlow}
+            onAddAudioToTimeline={(audioData, segmentNumber) => {
+              console.log('🎤 Add audio to timeline:', { audioData, segmentNumber });
+              // TODO: Implement audio timeline integration
+            }}
+            showApproval={chatFlow.showAudioApproval}
+            onApprove={(voiceId, voiceModel) => {
+              console.log('🎤 Audio generation approved:', { voiceId, voiceModel });
+              if (chatFlow.handleAudioApproval) {
+                chatFlow.handleAudioApproval(voiceId, voiceModel);
+              }
+            }}
+            onCancel={() => {
+              console.log('🎤 Audio generation cancelled');
+              if (chatFlow.cancelAudioApproval) {
+                chatFlow.cancelAudioApproval();
+              }
+            }}
+          />
+        ),
+        timestamp: audioTimestamp,
+      });
+    }
+
     // Add timeline integration component
     const canSendTimeline =
       Object.keys(chatFlow.generatedVideos || {}).length > 0 ||
@@ -410,13 +460,13 @@ const ChatMessages = ({
       const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
         (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
       
-      // For history projects, ensure timeline appears after video component
+      // For history projects, ensure timeline appears after audio component
       const baseTime = Date.now();
       const timelineTimestamp = videoCompletionMessage ? 
-        videoCompletionMessage.timestamp + 100 : 
+        videoCompletionMessage.timestamp + 300 : 
         (isHistoryProject ? 
-          baseTime - 200 : // History: after video (which uses baseTime - 500)
-          baseTime + 1500); // Generation: after video (which uses baseTime + 1000)
+          baseTime - 100 : // History: after audio (which uses baseTime - 300)
+          baseTime + 1800); // Generation: after audio (which uses baseTime + 1200)
       orderedMessages.push({
         id: "timeline-integration",
         type: "system",
@@ -473,6 +523,10 @@ const ChatMessages = ({
     chatFlow.generatedVideos,
     chatFlow.storedVideosMap,
     chatFlow.addingTimeline,
+    chatFlow.generatedAudios,
+    chatFlow.audioGenerationLoading,
+    chatFlow.audioGenerationProgress,
+    chatFlow.showAudioApproval,
     combinedVideosMap,
     currentPrompt,
     onVideoClick,
@@ -494,6 +548,7 @@ const ChatMessages = ({
               message.id === "concept-request" ||
               message.id === "script-request" ||
               message.id === "video-generation" ||
+              message.id === "audio-generation" ||
               message.id === "timeline-integration"
                 ? "w-full p-0" // Full width and no padding/background for component messages
                 : `max-w-[80%] p-2.5 text-white rounded-lg backdrop-blur-sm ${ 

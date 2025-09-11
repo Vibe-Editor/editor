@@ -6,6 +6,7 @@ import { useCreditManagement } from "./useCreditManagement";
 import { useModelSelection } from "./useModelSelection";
 import { useTimelineIntegration } from "./useTimelineIntegration";
 import { useRetryLogic } from "./useRetryLogic";
+import { useAudio } from "./useAudio";
 import { webInfoApi } from "../../services/web-info";
 import { conceptWriterApi } from "../../services/concept-writer";
 import { segmentationApi } from "../../services/segmentationapi";
@@ -24,6 +25,7 @@ export const useChatFlow = () => {
   const modelSelection = useModelSelection();
   const timelineIntegration = useTimelineIntegration();
   const retryLogic = useRetryLogic();
+  const audioHook = useAudio();
 
   // Loading and error states
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,11 @@ export const useChatFlow = () => {
     2: "pending", // script generation
     3: "pending", // user chooses script
     4: "pending", // video generation
+    5: "pending", // audio generation
   });
+
+  // Audio generation states
+  const [showAudioApproval, setShowAudioApproval] = useState(false);
 
   // Content states
   const [concepts, setConcepts] = useState(null);
@@ -128,6 +134,14 @@ export const useChatFlow = () => {
       newStepStatus[4] = "pending";
     }
 
+    // Step 5: Audio Generation - check if audio exists
+    const hasAudio = Object.keys(audioHook.generatedAudios).length > 0;
+    if (hasAudio) {
+      newStepStatus[5] = "done";
+    } else {
+      newStepStatus[5] = "pending";
+    }
+
     setStepStatus(newStepStatus);
   }, [
     selectedProject?.id,
@@ -137,6 +151,7 @@ export const useChatFlow = () => {
     selectedScript,
     generatedVideos,
     timelineIntegration.storedVideosMap,
+    audioHook.generatedAudios,
   ]);
 
   const resetFlow = useCallback(() => {
@@ -162,6 +177,10 @@ export const useChatFlow = () => {
     setGenerationProgress({});
     setVideoGenerationComplete(false);
 
+    // Reset audio states
+    setShowAudioApproval(false);
+    audioHook.resetAudioState();
+
     // Reset model selections to defaults
     modelSelection.resetModelsToDefaults();
 
@@ -173,7 +192,7 @@ export const useChatFlow = () => {
     timelineIntegration.resetTimelineStates();
 
     console.log("✅ Chat flow state reset complete");
-  }, [modelSelection, timelineIntegration]);
+  }, [modelSelection, timelineIntegration, audioHook]);
 
   // Helper function to show credit deduction after successful API response
   const showCreditDeduction = useCallback(
@@ -781,6 +800,19 @@ export const useChatFlow = () => {
         setStoredVideosMap({});
       }
 
+      // Load audio history for the project
+      try {
+        const audioHistory = await audioHook.loadAudioHistory(selectedProject.id);
+        if (audioHistory && Object.keys(audioHistory).length > 0) {
+          console.log('✅ Audio history loaded:', audioHistory);
+          // Audio step is complete if we have audio
+          setCurrentStep(Math.max(currentStep, 5));
+        }
+      } catch (audioError) {
+        console.warn('⚠️ Could not load audio history:', audioError.message);
+        // Don't fail the whole project load if audio history fails
+      }
+
       // Reset other states
       setScripts(null);
 
@@ -1133,6 +1165,131 @@ export const useChatFlow = () => {
     [agentStreaming, user, setError],
   );
 
+  // Audio generation functions
+  const triggerAudioApproval = useCallback(() => {
+    console.log('🎤 Triggering audio approval UI');
+    setShowAudioApproval(true);
+    
+    // Add system message about audio generation being ready
+    timelineIntegration.setAllUserMessages((prev) => [
+      ...prev,
+      {
+        id: `audio-approval-triggered-${Date.now()}`,
+        content: "🎤 Audio generation is ready! Please select a voice and approve to continue.",
+        timestamp: Date.now(),
+        type: "system",
+      },
+    ]);
+  }, [timelineIntegration]);
+
+  const handleAudioApproval = useCallback(async (voiceId, voiceModel) => {
+    console.log('🎤 Audio generation approved:', { voiceId, voiceModel });
+    
+    // Hide approval UI
+    setShowAudioApproval(false);
+    
+    // Add user message showing their selection
+    timelineIntegration.setAllUserMessages((prev) => [
+      ...prev,
+      {
+        id: `user-audio-approved-${Date.now()}`,
+        content: `Generating voice-over with ${voiceModel.name}...`,
+        timestamp: Date.now(),
+        type: "user",
+      },
+    ]);
+    
+    // Add system message showing generation start
+    timelineIntegration.setAllUserMessages((prev) => [
+      ...prev,
+      {
+        id: `system-audio-generating-${Date.now()}`,
+        content: "🎤 Generating audio...",
+        timestamp: Date.now(),
+        type: "system",
+      },
+    ]);
+
+    // Start audio generation
+    try {
+      await audioHook.generateAudioForSegments(
+        selectedScript?.segments || [],
+        selectedProject?.id,
+        generatedVideos,
+        // onProgress callback
+        (progress) => {
+          console.log('🎤 Audio generation progress:', progress);
+        },
+        // onComplete callback
+        (completion) => {
+          console.log('🎤 Audio segment completed:', completion);
+          
+          // Add completion message for each segment
+          timelineIntegration.setAllUserMessages((prev) => [
+            ...prev,
+            {
+              id: `audio-segment-complete-${completion.segmentId}-${Date.now()}`,
+              content: `✅ Audio generated for Segment ${completion.index}`,
+              timestamp: Date.now(),
+              type: "system",
+            },
+          ]);
+        },
+        // onError callback
+        (error) => {
+          console.error('❌ Audio generation error:', error);
+          
+          timelineIntegration.setAllUserMessages((prev) => [
+            ...prev,
+            {
+              id: `audio-error-${error.segmentId || 'unknown'}-${Date.now()}`,
+              content: `❌ Audio generation failed${error.segmentId ? ` for Segment ${error.segmentId}` : ''}: ${error.error}`,
+              timestamp: Date.now(),
+              type: "system",
+            },
+          ]);
+        }
+      );
+      
+      // Show final completion message
+      timelineIntegration.setAllUserMessages((prev) => [
+        ...prev,
+        {
+          id: `audio-generation-complete-${Date.now()}`,
+          content: "🎉 Audio generation completed! You can now play, download, or add the audio to your timeline.",
+          timestamp: Date.now(),
+          type: "system",
+        },
+      ]);
+      
+    } catch (error) {
+      console.error('❌ Audio generation process failed:', error);
+      setError(`Audio generation failed: ${error.message}`);
+    }
+  }, [
+    selectedScript,
+    selectedProject,
+    generatedVideos,
+    audioHook,
+    timelineIntegration,
+    setError,
+  ]);
+
+  const cancelAudioApproval = useCallback(() => {
+    console.log('🎤 Audio generation cancelled');
+    setShowAudioApproval(false);
+    
+    timelineIntegration.setAllUserMessages((prev) => [
+      ...prev,
+      {
+        id: `audio-cancelled-${Date.now()}`,
+        content: "Audio generation cancelled.",
+        timestamp: Date.now(),
+        type: "system",
+      },
+    ]);
+  }, [timelineIntegration]);
+
   return {
     // Core States
     loading,
@@ -1156,6 +1313,10 @@ export const useChatFlow = () => {
     ...creditManagement,
     ...timelineIntegration,
     ...agentStreaming,
+    ...audioHook,
+
+    // Audio-specific states
+    showAudioApproval,
 
     // Core Actions
     resetFlow,
@@ -1171,5 +1332,10 @@ export const useChatFlow = () => {
     startAgentStream: startAgentStreamWithCallbacks,
     approveToolExecution: approveToolExecutionWithCallbacks,
     rejectToolExecution: rejectToolExecutionWithCallbacks,
+
+    // Audio generation actions
+    triggerAudioApproval,
+    handleAudioApproval,
+    cancelAudioApproval,
   };
 };

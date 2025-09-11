@@ -1,8 +1,8 @@
 import React from "react";
-import { Brain, Image, Video } from "lucide-react";
+import { Brain, Image, Video, Mic } from "lucide-react";
 
 /**
- * Renders the list of 6 video creation steps along with their current status.
+ * Renders the list of video creation steps along with their current status.
  * Purely presentational – all state & logic is driven by props.
  */
 export default function StepList({
@@ -27,6 +27,8 @@ export default function StepList({
         return Brain;
       case 4: // Video Generation
         return Video;
+      case 5: // Audio Generation
+        return Mic;
       default:
         return Brain;
     }
