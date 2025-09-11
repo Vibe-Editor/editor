@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../config/baseurl";
+import { API_BASE_URL, CLOUDFRONT_URL } from "../config/baseurl";
 import { getAuthHeaders } from "./api";
 
 /**
@@ -81,11 +81,15 @@ export const audioApi = {
    * @returns {string} Full audio URL
    */
   getAudioUrl(s3Key) {
-    if (!s3Key) return null;
+    if (!s3Key) {
+      console.warn('⚠️ getAudioUrl called with empty s3Key');
+      return null;
+    }
     
     // Use CloudFront URL for audio files similar to videos
-    const { CLOUDFRONT_URL } = require('../config/baseurl');
-    return `${CLOUDFRONT_URL}/${s3Key}`;
+    const audioUrl = `${CLOUDFRONT_URL}/${s3Key}`;
+    console.log('🎵 Generated audio URL:', audioUrl);
+    return audioUrl;
   },
 };
 

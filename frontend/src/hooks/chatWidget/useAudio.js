@@ -115,6 +115,8 @@ export const useAudio = () => {
               audioSize: result.audio_size_bytes,
               model: result.model,
             };
+            
+            console.log(`🎤 Audio URL generated for segment ${segmentId}:`, audioUrl);
 
             // Update progress for this segment
             setAudioGenerationProgress(prev => ({
@@ -149,6 +151,11 @@ export const useAudio = () => {
 
         } catch (segmentError) {
           console.error(`❌ Error generating audio for segment ${segmentId}:`, segmentError);
+          console.error(`❌ Full error details:`, {
+            name: segmentError.name,
+            message: segmentError.message,
+            stack: segmentError.stack
+          });
           
           setAudioGenerationProgress(prev => ({
             ...prev,
@@ -156,14 +163,14 @@ export const useAudio = () => {
               status: 'error',
               index: index + 1,
               total: segmentsWithVideos.length,
-              error: segmentError.message,
+              error: segmentError.message || 'Unknown error occurred',
             }
           }));
 
           // Call error callback for this segment
           onError({
             segmentId,
-            error: segmentError.message,
+            error: segmentError.message || 'Unknown error occurred',
             index: index + 1,
             total: segmentsWithVideos.length,
           });
@@ -210,17 +217,27 @@ export const useAudio = () => {
       if (response && Array.isArray(response)) {
         const audiosMap = {};
         
-        response.forEach(audioData => {
-          if (audioData.segmentId && audioData.s3_key) {
-            const audioUrl = audioApi.getAudioUrl(audioData.s3_key);
-            audiosMap[audioData.segmentId] = {
+        response.forEach((audioData, index) => {
+          // Handle different field names from history API vs generation API
+          const s3Key = audioData.s3Key || audioData.s3_key;
+          const segmentId = audioData.segmentId || `segment-${index + 1}`; // Generate segment ID if missing
+          
+          if (s3Key) {
+            const audioUrl = audioApi.getAudioUrl(s3Key);
+            audiosMap[segmentId] = {
               url: audioUrl,
-              s3Key: audioData.s3_key,
-              segmentId: audioData.segmentId,
-              credits: audioData.credits,
-              audioSize: audioData.audio_size_bytes,
-              model: audioData.model,
+              s3Key: s3Key,
+              segmentId: segmentId,
+              credits: audioData.credits || { used: parseInt(audioData.creditsUsed || '0'), balance: 0 },
+              audioSize: audioData.audio_size_bytes || null,
+              model: audioData.model || 'eleven_multilingual_v2',
+              narrationPrompt: audioData.narrationPrompt, // Additional field from history
+              createdAt: audioData.createdAt,
             };
+            
+            console.log(`📜 Mapped audio history for ${segmentId}:`, audiosMap[segmentId]);
+          } else {
+            console.warn('⚠️ Audio history item missing s3Key:', audioData);
           }
         });
 
