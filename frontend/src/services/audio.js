@@ -29,6 +29,7 @@ export const audioApi = {
           segmentId,
           projectId,
           voiceId,
+          modelId:'eleven_v3',
         }),
       });
 
