@@ -9,11 +9,11 @@ export const useAudio = () => {
   const [audioGenerationProgress, setAudioGenerationProgress] = useState({});
   const [audioGenerationComplete, setAudioGenerationComplete] = useState(false);
   const [audioGenerationLoading, setAudioGenerationLoading] = useState(false);
-  const [selectedVoiceId, setSelectedVoiceId] = useState('EkK5I93UQWFDigLMpZcX'); // James (Default)
+  const [selectedVoiceId, setSelectedVoiceId] = useState('EkK5I93UQWFDigLMpZcX'); // James 
 
   // Voice model options
   const voiceModels = [
-    { id: 'EkK5I93UQWFDigLMpZcX', name: 'James (Default)' },
+    { id: 'EkK5I93UQWFDigLMpZcX', name: 'James' },
     { id: 'BpjGufoPiobT79j2vtj4', name: 'Priyanka' },
     { id: 'kdmDKE6EkgrWrrykO9Qt', name: 'Alexandra' },
     { id: '1SM7GgM6IMuvQlz2BwM3', name: 'Mark' },
@@ -25,6 +25,7 @@ export const useAudio = () => {
    * @param {Array} segments - Array of script segments
    * @param {string} projectId - Current project ID
    * @param {Object} generatedVideos - Map of generated videos by segment ID
+   * @param {string} voiceId - The voice ID to use for generation (overrides hook state)
    * @param {Function} onProgress - Callback for progress updates
    * @param {Function} onComplete - Callback for individual segment completion
    * @param {Function} onError - Callback for errors
@@ -33,6 +34,7 @@ export const useAudio = () => {
     segments, 
     projectId, 
     generatedVideos, 
+    voiceId = null,
     onProgress = () => {}, 
     onComplete = () => {}, 
     onError = () => {}
@@ -42,10 +44,14 @@ export const useAudio = () => {
       return;
     }
 
+    // Use passed voiceId or fall back to hook state
+    const effectiveVoiceId = voiceId || selectedVoiceId;
+    
     console.log('🎤 Starting audio generation for segments:', { 
       segmentCount: segments.length, 
       projectId, 
-      voiceId: selectedVoiceId,
+      voiceId: effectiveVoiceId,
+      voiceIdSource: voiceId ? 'parameter' : 'hook state',
       generatedVideosCount: Object.keys(generatedVideos).length
     });
 
@@ -100,7 +106,7 @@ export const useAudio = () => {
             narration: segment.narration,
             segmentId: segmentId,
             projectId: projectId,
-            voiceId: selectedVoiceId,
+            voiceId: effectiveVoiceId,
           });
 
           console.log(`✅ Audio generated for segment ${segmentId}:`, result);
@@ -197,7 +203,7 @@ export const useAudio = () => {
     } finally {
       setAudioGenerationLoading(false);
     }
-  }, [selectedVoiceId]);
+  }, []); // Remove selectedVoiceId dependency since it's now passed as parameter
 
   /**
    * Load audio history for a project

@@ -1216,6 +1216,7 @@ export const useChatFlow = () => {
         selectedScript?.segments || [],
         selectedProject?.id,
         generatedVideos,
+        voiceId, // Pass the selected voice ID
         // onProgress callback
         (progress) => {
           console.log('🎤 Audio generation progress:', progress);

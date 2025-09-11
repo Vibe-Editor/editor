@@ -16,9 +16,9 @@ const AudioGeneration = ({
   const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Voice model options
-  const voiceModels = [
-    { id: 'EkK5I93UQWFDigLMpZcX', name: 'James (Default)' },
+  // Get voice model options from chatFlow (which comes from useAudio hook)
+  const voiceModels = chatFlow?.voiceModels || [
+    { id: 'EkK5I93UQWFDigLMpZcX', name: 'James' },
     { id: 'BpjGufoPiobT79j2vtj4', name: 'Priyanka' },
     { id: 'kdmDKE6EkgrWrrykO9Qt', name: 'Alexandra' },
     { id: '1SM7GgM6IMuvQlz2BwM3', name: 'Mark' },
