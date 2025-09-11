@@ -100,13 +100,13 @@ const ConceptSelection = ({
               <div className='flex-1'>
                 {expandedCard === index ? (
                   <div className='text-gray-300 text-xs leading-relaxed'>
-                    <span className='text-cyan-300'>Summary:</span>{" "}
-                    {concept.summary || "No summary available"}
+                    <span className='text-cyan-300'>Description:</span>{" "}
+                    {concept.description || concept.summary || "No description available"}
                   </div>
                 ) : (
                   <div className="relative">
                     <div className="text-gray-300 text-xs leading-relaxed max-h-16 overflow-hidden">
-                      <span className="text-cyan-300">Summary:</span> {(concept.summary|| "No summary")}
+                      <span className="text-cyan-300">Description:</span> {(concept.description || concept.summary || "No description")}
                     </div>
                   </div>
                 )}

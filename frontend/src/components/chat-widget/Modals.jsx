@@ -3,11 +3,6 @@ import { createPortal } from "react-dom";
 import ModelSelector from "../ModelSelector";
 
 const Modals = ({
-  // Image modal
-  showImageModal,
-  modalImageUrl,
-  onCloseImageModal,
-
   // Video modal
   showVideoModal,
   modalVideoUrl,
@@ -16,8 +11,6 @@ const Modals = ({
   // Redo modal
   showRedoModal,
   redoStepId,
-  redoImageModel,
-  setRedoImageModel,
   redoVideoModel,
   setRedoVideoModel,
   loading,
@@ -90,30 +83,6 @@ const Modals = ({
 
   return (
     <>
-      {/* Image preview modal */}
-      {showImageModal &&
-        modalImageUrl &&
-        createPortal(
-          <div
-            className='fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[10003]'
-            onClick={onCloseImageModal}
-          >
-            <img
-              src={modalImageUrl}
-              alt='Preview'
-              className='max-w-full max-h-full rounded shadow-lg'
-              onClick={(e) => e.stopPropagation()}
-            />
-            <button
-              className='absolute top-4 right-4 text-white text-2xl'
-              onClick={onCloseImageModal}
-            >
-              ✕
-            </button>
-          </div>,
-          document.body,
-        )}
-
       {/* Video preview modal */}
       {showVideoModal &&
         modalVideoUrl &&
@@ -152,47 +121,27 @@ const Modals = ({
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className='text-lg font-semibold text-white mb-2'>
-                Redo {redoStepId === 4 ? "Image" : "Video"} Generation
+                Redo Video Generation
               </h3>
               <p className='text-xs font-semibold text-white mb-2'>
                 Choose a different AI model for regeneration:
               </p>
 
-              {redoStepId === 4 && (
-                <div className='relative z-10'>
-                  <label className='text-xs font-semibold text-white mb-2 block'>
-                    Image Generation Model
-                  </label>
-                  <div className='themed-select-wrapper'>
-                    <ModelSelector
-                      genType='IMAGE'
-                      selectedModel={redoImageModel}
-                      onModelChange={setRedoImageModel}
-                      disabled={loading}
-                      className='w-full'
-                      dropdownClassName='themed-dropdown'
-                    />
-                  </div>
+              <div className='relative z-10'>
+                <label className='text-xs font-semibold text-white mb-2 block'>
+                  Video Generation Model
+                </label>
+                <div className='themed-select-wrapper'>
+                  <ModelSelector
+                    genType='VIDEO'
+                    selectedModel={redoVideoModel}
+                    onModelChange={setRedoVideoModel}
+                    disabled={loading}
+                    className='w-full'
+                    dropdownClassName='themed-dropdown'
+                  />
                 </div>
-              )}
-
-              {redoStepId === 5 && (
-                <div className='relative z-10'>
-                  <label className='text-xs font-semibold text-white mb-2 block'>
-                    Video Generation Model
-                  </label>
-                  <div className='themed-select-wrapper'>
-                    <ModelSelector
-                      genType='VIDEO'
-                      selectedModel={redoVideoModel}
-                      onModelChange={setRedoVideoModel}
-                      disabled={loading}
-                      className='w-full'
-                      dropdownClassName='themed-dropdown'
-                    />
-                  </div>
-                </div>
-              )}
+              </div>
 
               <div className='flex gap-2 mt-2'>
                 <button
