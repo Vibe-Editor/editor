@@ -1170,16 +1170,7 @@ export const useChatFlow = () => {
     console.log('🎤 Triggering audio approval UI');
     setShowAudioApproval(true);
     
-    // Add system message about audio generation being ready
-    timelineIntegration.setAllUserMessages((prev) => [
-      ...prev,
-      {
-        id: `audio-approval-triggered-${Date.now()}`,
-        content: "🎤 Audio generation is ready! Please select a voice and approve to continue.",
-        timestamp: Date.now(),
-        type: "system",
-      },
-    ]);
+    
   }, [timelineIntegration]);
 
   const handleAudioApproval = useCallback(async (voiceId, voiceModel) => {
@@ -1188,27 +1179,7 @@ export const useChatFlow = () => {
     // Hide approval UI
     setShowAudioApproval(false);
     
-    // Add user message showing their selection
-    timelineIntegration.setAllUserMessages((prev) => [
-      ...prev,
-      {
-        id: `user-audio-approved-${Date.now()}`,
-        content: `Generating voice-over with ${voiceModel.name}...`,
-        timestamp: Date.now(),
-        type: "user",
-      },
-    ]);
     
-    // Add system message showing generation start
-    timelineIntegration.setAllUserMessages((prev) => [
-      ...prev,
-      {
-        id: `system-audio-generating-${Date.now()}`,
-        content: "🎤 Generating audio...",
-        timestamp: Date.now(),
-        type: "system",
-      },
-    ]);
 
     // Start audio generation
     try {
@@ -1225,43 +1196,15 @@ export const useChatFlow = () => {
         (completion) => {
           console.log('🎤 Audio segment completed:', completion);
           
-          // Add completion message for each segment
-          timelineIntegration.setAllUserMessages((prev) => [
-            ...prev,
-            {
-              id: `audio-segment-complete-${completion.segmentId}-${Date.now()}`,
-              content: `✅ Audio generated for Segment ${completion.index}`,
-              timestamp: Date.now(),
-              type: "system",
-            },
-          ]);
+          
         },
         // onError callback
         (error) => {
           console.error('❌ Audio generation error:', error);
-          
-          timelineIntegration.setAllUserMessages((prev) => [
-            ...prev,
-            {
-              id: `audio-error-${error.segmentId || 'unknown'}-${Date.now()}`,
-              content: `❌ Audio generation failed${error.segmentId ? ` for Segment ${error.segmentId}` : ''}: ${error.error}`,
-              timestamp: Date.now(),
-              type: "system",
-            },
-          ]);
         }
       );
       
-      // Show final completion message
-      timelineIntegration.setAllUserMessages((prev) => [
-        ...prev,
-        {
-          id: `audio-generation-complete-${Date.now()}`,
-          content: "🎉 Audio generation completed! You can now play, download, or add the audio to your timeline.",
-          timestamp: Date.now(),
-          type: "system",
-        },
-      ]);
+      
       
     } catch (error) {
       console.error('❌ Audio generation process failed:', error);

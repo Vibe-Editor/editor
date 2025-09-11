@@ -198,7 +198,7 @@ const AudioGeneration = ({
     const totalCount = progressEntries.length;
 
     return (
-      <div className='bg-gray-800/50 border border-gray-700/30 rounded-lg p-4 mb-3'>
+      <div className='bg-[#FFFFFF0D] border-0  rounded-lg p-4 mb-3'>
         <div className='text-gray-100 text-sm mb-3 flex items-center gap-2'>
           <div className='w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin'></div>
           <span>Generating audio... ({completedCount}/{totalCount})</span>

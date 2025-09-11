@@ -324,7 +324,7 @@ const AudioPlayer = ({ audioData, segmentNumber, onAddToTimeline }) => {
             />
 
             {isLoading && (
-              <div className='absolute inset-0 flex items-center justify-center bg-gray-800/80 rounded'>
+              <div className='absolute inset-0 flex items-center justify-center bg-[#FFFFFF0D] rounded'>
                 <div className='text-gray-400 text-xs flex items-center gap-1'>
                   <div className='w-2 h-2 border border-gray-400 border-t-transparent rounded-full animate-spin'></div>
                   Loading...
