@@ -338,7 +338,6 @@ export class App extends LitElement {
 
 
               #video {
-                aspect-ratio: 16/9 !important;
                 width: 600px !important;
                 max-width: 70% !important;
                 height: auto !important;
@@ -348,9 +347,7 @@ export class App extends LitElement {
                 overflow: hidden !important;
                 position: relative !important;
                 margin: 0 auto !important;
-                /* Ensure strict 16:9 ratio maintenance */
                 min-width: 320px !important;
-                min-height: 180px !important;
               }
 
               /* Remove size variations - keep consistent size */
@@ -368,9 +365,8 @@ export class App extends LitElement {
 
               preview-canvas {
                 width: 100% !important;
-                height: 100% !important;
+                height: auto !important;
                 display: block !important;
-                aspect-ratio: 16/9 !important;
               }
 
               /* Responsive adjustments - consistent smaller size */

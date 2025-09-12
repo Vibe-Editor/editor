@@ -81,6 +81,18 @@ export class ControlSetting extends LitElement {
     this.renderOptionStore.updateOptions(this.renderOption);
   }
 
+  _handleAspectRatioChange(e) {
+    const value = e.target.value;
+    this.renderOption.aspectRatio = value;
+    const [wRatioStr, hRatioStr] = value.split(":");
+    const wRatio = parseInt(wRatioStr || "16");
+    const hRatio = parseInt(hRatioStr || "9");
+    const currentW = this.renderOption.previewSize.w;
+    const newH = Math.round((currentW * hRatio) / wRatio);
+    this.renderOption.previewSize.h = newH;
+    this.renderOptionStore.updateOptions(this.renderOption);
+  }
+
   render() {
     return html` <p class="text-secondary" ref="appVersion">
         ${this.appVersion}
@@ -102,6 +114,17 @@ export class ControlSetting extends LitElement {
         >
           ${this.lc.t("setting.select_project_folder")}
         </button>
+      </div>
+
+      <label class="form-label text-light">Aspect Ratio</label>
+      <div class="input-group mb-3">
+        <select class="form-select bg-default text-light" @change=${this._handleAspectRatioChange}>
+          <option value="16:9" ${this.renderOption.aspectRatio === "16:9" ? "selected" : ""}>16:9 (Widescreen)</option>
+          <option value="4:3" ${this.renderOption.aspectRatio === "4:3" ? "selected" : ""}>4:3</option>
+          <option value="1:1" ${this.renderOption.aspectRatio === "1:1" ? "selected" : ""}>1:1 (Square)</option>
+          <option value="9:16" ${this.renderOption.aspectRatio === "9:16" ? "selected" : ""}>9:16 (Vertical)</option>
+          <option value="21:9" ${this.renderOption.aspectRatio === "21:9" ? "selected" : ""}>21:9 (Ultrawide)</option>
+        </select>
       </div>
 
       <label class="form-label text-light"

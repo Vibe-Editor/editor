@@ -162,7 +162,7 @@ export class Control extends LitElement {
           
           <!-- Video box centered -->
           <div id="videobox" class="d-flex justify-content-center align-items-center w-100 flex-grow-1" style="padding: 0 20px 20px 20px;">
-            <div id="video" class="video" style="background-color: #000000; border-radius: 20px; border: none; width: 600px; aspect-ratio: 16/9; max-width: 70%; margin: 0 auto; position: relative;">
+            <div id="video" class="video" style="background-color: #000000; border-radius: 20px; border: none; width: 600px; max-width: 70%; margin: 0 auto; position: relative;">
               <preview-canvas></preview-canvas>
               <element-control></element-control>
               <drag-alignment-guide></drag-alignment-guide>

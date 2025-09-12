@@ -14,6 +14,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 import config from "./config.json";
 
 import ffmpeg from "fluent-ffmpeg";
+import { ffmpegConfig } from "./lib/ffmpeg.js";
 
 import isDev from "electron-is-dev";
 import log from "electron-log";
@@ -81,13 +82,22 @@ ipcMain.on("CLIENT_READY", async (evt) => {
 });
 
 ipcMain.handle("GET_METADATA", async (evt, bloburl, mediapath) => {
-  const result = new Promise((resolve, reject) => {
+  // Ensure ffprobe path is set so ffmpeg can locate the binary
+  try {
+    ffmpeg.setFfprobePath(ffmpegConfig.FFPROBE_PATH);
+  } catch (e) {
+    // Non-fatal; we'll still attempt ffprobe
+  }
+
+  const result = new Promise((resolve) => {
     ffmpeg.ffprobe(mediapath, (err, metadata) => {
+      if (err) {
+        console.warn("ffprobe failed for", mediapath, err?.message || err);
+        resolve({ bloburl, metadata: null, error: String(err?.message || err) });
+        return;
+      }
       console.log(mediapath, metadata, bloburl);
-      resolve({
-        bloburl: bloburl,
-        metadata: metadata,
-      });
+      resolve({ bloburl, metadata });
     });
   });
 

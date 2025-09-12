@@ -326,6 +326,32 @@ export class elementTimelineCanvas extends LitElement {
     this.copyedTimelineData = selected;
   }
 
+  public splitAtCursor() {
+    if (this.targetId.length !== 1) {
+      return false;
+    }
+
+    this.splitSeletedElement();
+
+    for (const elementId in this.copyedTimelineData) {
+      if (Object.hasOwnProperty.call(this.copyedTimelineData, elementId)) {
+        let tempCopyObject: any = this.copyedTimelineData[elementId];
+        tempCopyObject.priority = this.getNowPriority();
+
+        this.timeline[elementId] = { ...tempCopyObject };
+        this.timelineState.patchTimeline(this.timeline);
+        this.timelineState.checkPointTimeline();
+      }
+    }
+
+    const newIds = Object.keys(this.copyedTimelineData);
+    if (newIds.length === 1) {
+      this.targetId = [newIds[0]];
+    }
+
+    this.drawCanvas();
+  }
+
   drawCursor() {
     const ctx: any = this.canvas.getContext("2d");
     const height = document.querySelector("element-timeline").offsetHeight;
@@ -1142,6 +1168,7 @@ export class elementTimelineCanvas extends LitElement {
     document.querySelector("#menuRightClick").innerHTML = `
         <menu-dropdown-body top="${y}" left="${x}">
         ${this.animationPanelDropdownTemplate()}
+          <menu-dropdown-item onclick="document.querySelector('element-timeline-canvas').splitAtCursor()" item-name="split at cursor"> </menu-dropdown-item>
           <menu-dropdown-item onclick="document.querySelector('element-timeline-canvas').removeSeletedElements()" item-name="remove"> </menu-dropdown-item>
         </menu-dropdown-body>`;
   }
