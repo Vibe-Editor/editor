@@ -16,7 +16,9 @@
     "bundle:prod:src": "webpack --mode=production",
     "compile:prod": "tsc -p ./.tsconfig",
     "build:win": "npm run bundle:prod:src && electron-builder build --win --x64",
-    "prebuild:mac": "npm --prefix ./frontend ci && npm --prefix ./frontend run build:all-widgets && npm --prefix ./apps/overlay-record ci && npm --prefix ./apps/overlay-record run build && npm --prefix ./packages/render ci && npm --prefix ./packages/render run build && npm run compile:prod",
+
+    "prebuild:mac": "npm --prefix ./frontend ci && (npm --prefix ./frontend run build:all || npm --prefix ./frontend run build:all-widgets) && npm --prefix ./apps/overlay-record ci && npm --prefix ./apps/overlay-record run build && npm --prefix ./packages/render ci && npm --prefix ./packages/render run build && npm run compile:prod",
+
     "build:mac": "npm run bundle:prod:src && electron-builder build --mac",
     "build:mas": "npm run bundle:prod:src && electron-builder build --mac mas",
     "build": "npm run build:win"
@@ -76,16 +78,6 @@
         "^node_modules/(.+)/(test|tests|__tests__)/.*"
       ]
     },
-    "mas": {
-      "type": "distribution",
-      "category": "public.app-category.video",
-      "entitlements": "electron/entitlements.mas.plist",
-      "entitlementsInherit": "electron/entitlements.mas.inherit.plist",
-      "provisioningProfile": "electron/embedded.provisionprofile",
-      "hardenedRuntime": false,
-      "minimumSystemVersion": "12.0.0",
-      "artifactName": "${productName}-mas-${version}.pkg"
-    },
     "afterSign": "electron/notarize.js",
     "afterAllArtifactBuild": "electron/afterAll.js",
     "dmg": {
@@ -106,6 +98,8 @@
         "height": 380
       }
     },
+    "afterSign": "electron/notarize.js",
+    "afterAllArtifactBuild": "electron/afterAll.js",
     "win": {
       "target": [
         {
@@ -137,6 +131,7 @@
       "package.json"
     ],
     "asarUnpack": [
+      "**/*.node",
       "node_modules/call-bind-apply-helpers/**/*",
       "node_modules/call-bind/**/*",
       "node_modules/dunder-proto/**/*",
@@ -186,7 +181,8 @@
     "typescript": "^5.8.3",
     "uuid": "^9.0.0",
     "vite": "^7.0.4",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.0",
+    "color-name": "^1.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.22.1",

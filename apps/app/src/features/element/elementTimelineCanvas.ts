@@ -17,6 +17,7 @@ import {
   IRenderOptionStore,
   renderOptionStore,
 } from "../../states/renderOptionStore";
+import "../../ui/modal/VideoEditModal";
 
 interface ObjectClassType {
   [elementId: string]: number;
@@ -47,6 +48,8 @@ export class elementTimelineCanvas extends LitElement {
   copyedTimelineData: {};
   isGuide: boolean;
   targetIdDuringRightClick: any;
+  lastClickTime: number;
+  lastClickTarget: string;
 
   constructor() {
     super();
@@ -66,6 +69,8 @@ export class elementTimelineCanvas extends LitElement {
     this.timelineColor = {};
     this.canvasVerticalScroll = 0;
     this.copyedTimelineData = {};
+    this.lastClickTime = 0;
+    this.lastClickTarget = "";
 
     window.addEventListener("resize", this.drawCanvas);
     window.addEventListener("keydown", this._handleKeydown.bind(this));
@@ -326,6 +331,32 @@ export class elementTimelineCanvas extends LitElement {
     this.copyedTimelineData = selected;
   }
 
+  public splitAtCursor() {
+    if (this.targetId.length !== 1) {
+      return false;
+    }
+
+    this.splitSeletedElement();
+
+    for (const elementId in this.copyedTimelineData) {
+      if (Object.hasOwnProperty.call(this.copyedTimelineData, elementId)) {
+        let tempCopyObject: any = this.copyedTimelineData[elementId];
+        tempCopyObject.priority = this.getNowPriority();
+
+        this.timeline[elementId] = { ...tempCopyObject };
+        this.timelineState.patchTimeline(this.timeline);
+        this.timelineState.checkPointTimeline();
+      }
+    }
+
+    const newIds = Object.keys(this.copyedTimelineData);
+    if (newIds.length === 1) {
+      this.targetId = [newIds[0]];
+    }
+
+    this.drawCanvas();
+  }
+
   drawCursor() {
     const ctx: any = this.canvas.getContext("2d");
     const height = document.querySelector("element-timeline").offsetHeight;
@@ -392,11 +423,16 @@ export class elementTimelineCanvas extends LitElement {
 
       // Ensure displayed size follows internal resolution
 
-      // Calculate required height based on number of timeline rows
-      const rows = Math.max(
-        ...Object.values(this.timeline).map((el: any) => (el.track ?? 0) + 1),
-        1,
-      );
+      // Determine number of timeline rows
+      let rows: number;
+      const highestTrack = Object.values(this.timeline).length > 0
+        ? Math.max(
+            ...Object.values(this.timeline).map((el: any) => (el.track ?? 0) + 1),
+            1,
+          )
+        : 0;
+      // Always show at least 3 rows; expand further if more tracks are used
+      rows = Math.max(highestTrack, 3);
       const parentHeight = rows * 36; // 30px clip height + ~20% padding
       this.canvas.height = parentHeight * dpr;
 
@@ -442,17 +478,14 @@ export class elementTimelineCanvas extends LitElement {
       // Draw row grid lines only when timeline is empty to avoid duplicate lines.
       const ROW_H = 30;
       const ROW_SPACING = ROW_H * 1.2;
-      const hasElements = Object.keys(this.timeline).length > 0;
-      if (!hasElements) {
-        ctx.strokeStyle = "rgba(255,255,255,0.3)";
-        ctx.lineWidth = 1;
-        for (let i = 0; i <= rows; i++) {
-          const y = i * ROW_SPACING;
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(this.canvas.width / dpr, y);
-          ctx.stroke();
-        }
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= rows; i++) {
+        const y = i * ROW_SPACING;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(this.canvas.width / dpr, y);
+        ctx.stroke();
       }
 
       const sortedTimeline = Object.fromEntries(
@@ -1104,6 +1137,27 @@ export class elementTimelineCanvas extends LitElement {
     );
   }
 
+  public openVideoEditModal(videoId: string) {
+    console.log("Opening video edit modal for:", videoId);
+    
+    if (!videoId || !this.timeline[videoId] || this.timeline[videoId].filetype !== "video") {
+      console.error("Invalid video element for editing:", videoId, this.timeline[videoId]);
+      return;
+    }
+
+    let videoEditModal = document.querySelector("video-edit-modal");
+    console.log("Found video edit modal:", videoEditModal);
+    
+    if (!videoEditModal) {
+      console.log("Creating new video edit modal");
+      videoEditModal = document.createElement("video-edit-modal");
+      document.body.appendChild(videoEditModal);
+    }
+    
+    console.log("Calling show on modal with videoId:", videoId);
+    videoEditModal.show(videoId);
+  }
+
   animationPanelDropdownTemplate() {
     if (this.targetId.length != 1) {
       return "";
@@ -1128,6 +1182,20 @@ export class elementTimelineCanvas extends LitElement {
     return template;
   }
 
+  videoEditDropdownTemplate() {
+    if (this.targetId.length != 1) {
+      return "";
+    }
+
+    if (this.timeline[this.targetId[0]].filetype !== "video") {
+      return "";
+    }
+
+    let itemOnclickEvent = `document.querySelector('element-timeline-canvas').openVideoEditModal('${this.targetId[0]}')`;
+    let template = `<menu-dropdown-item onclick="${itemOnclickEvent}" item-name="Edit Video with AI"></menu-dropdown-item>`;
+    return template;
+  }
+
   isShowAnimationPanel() {
     const index = this.isOpenAnimationPanelId.findIndex((item) => {
       return this.targetId.includes(item);
@@ -1139,7 +1207,9 @@ export class elementTimelineCanvas extends LitElement {
   showMenuDropdown({ x, y }) {
     document.querySelector("#menuRightClick").innerHTML = `
         <menu-dropdown-body top="${y}" left="${x}">
+        ${this.videoEditDropdownTemplate()}
         ${this.animationPanelDropdownTemplate()}
+          <menu-dropdown-item onclick="document.querySelector('element-timeline-canvas').splitAtCursor()" item-name="split at cursor"> </menu-dropdown-item>
           <menu-dropdown-item onclick="document.querySelector('element-timeline-canvas').removeSeletedElements()" item-name="remove"> </menu-dropdown-item>
         </menu-dropdown-body>`;
   }
@@ -1343,6 +1413,20 @@ export class elementTimelineCanvas extends LitElement {
 
       const target = this.findTarget({ x: x, y: y });
       console.log('Mouse down - target found:', target);
+
+      // Handle double-click for video editing
+      const currentTime = Date.now();
+      const isDoubleClick = (currentTime - this.lastClickTime) < 500 && 
+                           this.lastClickTarget === target.targetId;
+      
+      if (isDoubleClick && target.targetId && 
+          this.timeline[target.targetId]?.filetype === "video") {
+        this.openVideoEditModal(target.targetId);
+        return;
+      }
+      
+      this.lastClickTime = currentTime;
+      this.lastClickTarget = target.targetId;
 
       if (e.shiftKey && target.targetId != "") {
         this.targetId.push(target.targetId);

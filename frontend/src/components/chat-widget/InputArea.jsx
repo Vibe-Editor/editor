@@ -9,8 +9,6 @@ export default function InputArea({
   prompt,
   setPrompt,
   loading,
-  currentStep,
-
   chatFlow, // Add chatFlow to determine available models
 }) {
   const [selectedModel, setSelectedModel] = useState("GPT-4o mini");
@@ -25,22 +23,20 @@ export default function InputArea({
     "gemini-pro": { label: "Gemini Pro", tokens: "4", time: "4" },
     "recraft-v3": { label: "Recraft", tokens: "1", time: "4" },
     imagen: { label: "Imagen", tokens: "2", time: "2" },
-    "gen4-turbo": { label: "RunwayML", tokens: "2.5", time: "3" },
+    "gen4_turbo": { label: "RunwayML", tokens: "2.5", time: "3" },
     "kling-v2.1-master": { label: "Kling", tokens: "20", time: "4" },
+    "veo3": { label: "veo3", tokens: "37", time: "5" },
   };
 
-  // Get available models based on current step and flow state
+  // Get available models based on flow state
   const getAvailableModels = () => {
     // Initial concept generation - only Gemini 2.5 Flash
-    if (currentStep === 0 && !chatFlow?.concepts) {
+    if (!chatFlow?.concepts) {
       return [{ value: "gpt-2.5", ...modelData["gpt-2.5"] }];
     }
 
     // Script generation after concept selection - Flash default, Pro option
-    if (
-      currentStep === 2 ||
-      (chatFlow?.selectedConcept && !chatFlow?.selectedScript)
-    ) {
+    if (chatFlow?.selectedConcept && !chatFlow?.selectedScript) {
       return [
         { value: "gemini-flash", ...modelData["gemini-flash"] },
         { value: "gemini-pro", ...modelData["gemini-pro"] },
@@ -49,9 +45,8 @@ export default function InputArea({
 
     // Image generation after script selection - Recraft default, Imagen option
     if (
-      currentStep === 4 ||
-      (chatFlow?.selectedScript &&
-        Object.keys(chatFlow?.generatedImages || {}).length === 0)
+      chatFlow?.selectedScript &&
+      Object.keys(chatFlow?.generatedImages || {}).length === 0
     ) {
       return [
         { value: "recraft-v3", ...modelData["recraft-v3"] },
@@ -59,15 +54,15 @@ export default function InputArea({
       ];
     }
 
-    // Video generation after image generation - Runway default, Kling option
+    // Video generation after image generation - Runway default, Kling and veo3 options
     if (
-      currentStep === 5 ||
-      (Object.keys(chatFlow?.generatedImages || {}).length > 0 &&
-        Object.keys(chatFlow?.generatedVideos || {}).length === 0)
+      Object.keys(chatFlow?.generatedImages || {}).length > 0 &&
+      Object.keys(chatFlow?.generatedVideos || {}).length === 0
     ) {
       return [
-        { value: "gen4-turbo", ...modelData["gen4-turbo"] },
+        { value: "gen4_turbo", ...modelData["gen4_turbo"] },
         { value: "kling-v2.1-master", ...modelData["kling-v2.1-master"] },
+        { value: "veo3", ...modelData["veo3"] },
       ];
     }
 
@@ -79,35 +74,29 @@ export default function InputArea({
   useEffect(() => {
     const availableModels = getAvailableModels();
     if (availableModels.length > 0) {
-      // Set default model based on step - always use the first option (which is the default)
-      if (currentStep === 0 && !chatFlow?.concepts) {
+      // Set default model based on flow state - always use the first option (which is the default)
+      if (!chatFlow?.concepts) {
         setSelectedModel("gpt-2.5");
-      } else if (
-        currentStep === 2 ||
-        (chatFlow?.selectedConcept && !chatFlow?.selectedScript)
-      ) {
+      } else if (chatFlow?.selectedConcept && !chatFlow?.selectedScript) {
         setSelectedModel("gemini-flash"); // Default to Gemini Flash
         // Also ensure the chatFlow has the correct default
         if (chatFlow && chatFlow.setSelectedScriptModel) {
           chatFlow.setSelectedScriptModel("flash");
         }
-        console.log("Set default script model to flash for step", currentStep);
+        console.log("Set default script model to flash");
       } else if (
-        currentStep === 4 ||
-        (chatFlow?.selectedScript &&
-          Object.keys(chatFlow?.generatedImages || {}).length === 0)
+        chatFlow?.selectedScript &&
+        Object.keys(chatFlow?.generatedImages || {}).length === 0
       ) {
         setSelectedModel("recraft-v3"); // Default to Recraft
       } else if (
-        currentStep === 5 ||
-        (Object.keys(chatFlow?.generatedImages || {}).length > 0 &&
-          Object.keys(chatFlow?.generatedVideos || {}).length === 0)
+        Object.keys(chatFlow?.generatedImages || {}).length > 0 &&
+        Object.keys(chatFlow?.generatedVideos || {}).length === 0
       ) {
-        setSelectedModel("gen4-turbo"); // Default to RunwayML
+        setSelectedModel("gen4_turbo"); // Default to RunwayML
       }
     }
   }, [
-    currentStep,
     chatFlow?.concepts,
     chatFlow?.selectedConcept,
     chatFlow?.selectedScript,
@@ -145,6 +134,73 @@ export default function InputArea({
     setPrompt(e.target.value);
   };
 
+  const handleKeyDown = (e) => {
+    // Handle keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case "a":
+          // Select all text
+          e.preventDefault();
+          if (textareaRef.current) {
+            textareaRef.current.select();
+            textareaRef.current.setSelectionRange(
+              0,
+              textareaRef.current.value.length,
+            );
+          }
+          break;
+        case "x":
+          // Cut text
+          e.preventDefault();
+          if (
+            textareaRef.current &&
+            textareaRef.current.selectionStart !==
+              textareaRef.current.selectionEnd
+          ) {
+            const start = textareaRef.current.selectionStart;
+            const end = textareaRef.current.selectionEnd;
+            const selectedText = prompt.substring(start, end);
+
+            // Copy to clipboard
+            navigator.clipboard
+              .writeText(selectedText)
+              .then(() => {
+                // Remove selected text
+                const newMessage =
+                  prompt.substring(0, start) + prompt.substring(end);
+                setPrompt(newMessage);
+
+                // Set cursor position
+                setTimeout(() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.setSelectionRange(start, start);
+                  }
+                }, 0);
+              })
+              .catch((err) => {
+                console.error("Failed to copy text: ", err);
+                // Fallback: just remove the text
+                const newMessage =
+                  prompt.substring(0, start) + prompt.substring(end);
+                setPrompt(newMessage);
+              });
+          }
+          break;
+        case "v":
+          // Paste text - let default behavior handle this
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Handle Enter key for sending message
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   const handleModelSelect = (modelValue) => {
     setSelectedModel(modelValue);
     setIsDropdownOpen(false);
@@ -153,29 +209,36 @@ export default function InputArea({
     if (chatFlow) {
       if (modelValue === "recraft-v3" || modelValue === "imagen") {
         chatFlow.setSelectedImageModel(modelValue);
-      } else if (modelValue === "gen4-turbo") {
+      } else if (modelValue === "gen4_turbo") {
         chatFlow.setSelectedVideoModel("gen4_turbo");
       } else if (modelValue === "kling-v2.1-master") {
         chatFlow.setSelectedVideoModel("kling-v2.1-master");
+      } else if (modelValue === "veo3") {
+        chatFlow.setSelectedVideoModel("veo3");
       } else if (modelValue === "gemini-pro") {
         chatFlow.setSelectedScriptModel("gemini-pro");
-        console.log("User selected Gemini Pro, set script model to 'gemini-pro'");
+        console.log(
+          "User selected Gemini Pro, set script model to 'gemini-pro'",
+        );
       } else if (modelValue === "gemini-flash") {
         chatFlow.setSelectedScriptModel("gemini-flash");
-        console.log("User selected Gemini Flash, set script model to 'gemini-flash'");
+        console.log(
+          "User selected Gemini Flash, set script model to 'gemini-flash'",
+        );
       } else if (modelValue === "gpt-2.5") {
         chatFlow.setSelectedScriptModel("gemini-2.0-flash-exp");
-        console.log("User selected Gemini 2.5 Flash, set script model to 'gemini-2.0-flash-exp'");
+        console.log(
+          "User selected Gemini 2.5 Flash, set script model to 'gemini-2.0-flash-exp'",
+        );
       }
-      
+
       console.log("Model selection updated:", {
         inputAreaModel: modelValue,
-        currentStep: currentStep,
         chatFlowModels: {
           script: chatFlow?.selectedScriptModel,
           image: chatFlow?.selectedImageModel,
-          video: chatFlow?.selectedVideoModel
-        }
+          video: chatFlow?.selectedVideoModel,
+        },
       });
     }
   };
@@ -203,12 +266,12 @@ export default function InputArea({
             id: `user-message-${newMessageId}`,
             content: currentPrompt,
             timestamp: Date.now(),
-            type: 'user',
+            type: "user",
           },
         ]);
 
         // Start streaming agent flow
-        console.log('InputArea sending prompt to agent:', currentPrompt);
+        console.log("InputArea sending prompt to agent:", currentPrompt);
         chatFlow.startAgentStream(currentPrompt);
       }
     }
@@ -261,24 +324,7 @@ export default function InputArea({
                 ref={textareaRef}
                 value={prompt}
                 onChange={handleTextareaChange}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (
-                    e.nativeEvent &&
-                    typeof e.nativeEvent.stopImmediatePropagation === "function"
-                  ) {
-                    e.nativeEvent.stopImmediatePropagation();
-                  }
-                  if (
-                    e.key === "Enter" &&
-                    !e.shiftKey &&
-                    prompt.trim() &&
-                    !loading
-                  ) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
+                onKeyDown={handleKeyDown}
                 placeholder='how about "A bird flying on the moon with a red cape"...'
                 className='w-full text-sm p-0 border-0 focus:outline-none resize-none bg-transparent placeholder-gray-500 text-gray-300 leading-relaxed overflow-hidden'
                 style={{
@@ -437,8 +483,6 @@ export default function InputArea({
 
               {/* Action Icons */}
               <div className='flex items-center gap-0'>
-
-
                 {/* Icon 1 - Palette/Color */}
                 <svg
                   width='28'

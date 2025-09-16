@@ -1,4 +1,9 @@
-import { axiosInstance } from "../lib/axiosInstance";
+import axios from "axios";
+import { API_BASE_URL } from "../config/baseurl.js";
+
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+});
 import { getAuthHeaders } from "./api";
 
 // Available models for generation
@@ -52,6 +57,13 @@ export const AVAILABLE_MODELS = {
       name: "Kling v2.1 Master",
       description: "Image-to-video generation",
       provider: "Fal.ai",
+      duration: "5 seconds",
+      resolution: "Variable",
+    },
+    "veo3": {
+      name: "veo3",
+      description: "Advanced video generation",
+      provider: "Google",
       duration: "5 seconds",
       resolution: "Variable",
     },

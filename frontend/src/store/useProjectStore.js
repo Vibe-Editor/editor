@@ -1,10 +1,14 @@
 import { create } from "zustand";
 import { projectApi } from "../services/project";
 import { creditApi } from "../services/credit";
+import { useSegmentStore } from "./useSegmentStore";
 
 const storeImpl = (set, get) => ({
   projects: [],
   selectedProject: null,
+  // Note: storedVideosMap is now managed by useSegmentStore
+  // This is kept for backward compatibility but will be deprecated
+  storedVideosMap: {},
   conversations: [],
   concepts: [],
   images: [],
@@ -14,6 +18,25 @@ const storeImpl = (set, get) => ({
   summaries: [],
   research: [],
   loading: false,
+  
+  // Authentication State
+  auth: {
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    loading: false,
+    error: null,
+  },
+  
+  // Project Editor State
+  projectEditor: {
+    currentStep: 'greeting',
+    questionsData: null,
+    videoTypeSelection: null,
+    userPrompt: '',
+    preferenceAnswers: {},
+    chatMessages: [],
+  },
   loadingData: {
     conversations: false,
     concepts: false,
@@ -28,16 +51,36 @@ const storeImpl = (set, get) => ({
   error: null,
   creditBalance: 0,
 
-  setProjects: (projects) => set({ projects }),
+  setProjects: (projects) => {
+    set({ projects });
+  },
+  setStoredVideosMap: (videosMap) => {
+    const { selectedProject } = get();
+    set({ storedVideosMap: videosMap });
+    
+    // Also update the segment store
+    const segmentStore = useSegmentStore.getState();
+    segmentStore.setSegmentVideos(videosMap, !!selectedProject);
+  },
   setSelectedProject: (project) => {
     console.log('🏪 Store: Setting selected project:', project?.name);
     set({ selectedProject: project });
     
-    // Update localStorage
+    // Clear project editor state when switching projects
+    get().resetProjectEditor();
+    
+    // Update storedVideosMap based on project selection
+    const { setStoredVideosMap } = get();
     if (project) {
-      localStorage.setItem("project-store-selectedProject", JSON.stringify(project));
+      // Get project videos from segment store
+      const segmentStore = useSegmentStore.getState();
+      const projectVideos = segmentStore.projectVideos || {};
+      setStoredVideosMap(projectVideos);
     } else {
-      localStorage.removeItem("project-store-selectedProject");
+      // Get segment videos from segment store
+      const segmentStore = useSegmentStore.getState();
+      const segmentVideos = segmentStore.segmentVideos || {};
+      setStoredVideosMap(segmentVideos);
     }
     
     // Dispatch custom event to notify components
@@ -48,6 +91,42 @@ const storeImpl = (set, get) => ({
     if (project?.id) {
       get().fetchProjectEssentials(project.id);
     }
+  },
+
+  // Selected project management methods
+  getSelectedProject: () => {
+    const { selectedProject } = get();
+    return selectedProject;
+  },
+
+  clearSelectedProject: () => {
+    console.log('🏪 Store: Clearing selected project');
+    set({ selectedProject: null });
+    
+    // Dispatch custom event to notify components
+    window.dispatchEvent(new CustomEvent('projectChanged', { 
+      detail: { project: null } 
+    }));
+  },
+
+  loadSelectedProjectFromStorage: () => {
+    const { selectedProject } = get();
+    return selectedProject;
+  },
+
+  saveSelectedProjectToStorage: (project) => {
+    set({ selectedProject: project });
+    return true;
+  },
+
+  hasProjectInStorage: () => {
+    const { selectedProject } = get();
+    return selectedProject !== null;
+  },
+
+  getProjectFromStorage: () => {
+    const { selectedProject } = get();
+    return selectedProject;
   },
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
@@ -61,14 +140,183 @@ const storeImpl = (set, get) => ({
   setResearch: (research) => set({ research }),
   setCreditBalance: (balance) => set({ creditBalance: balance }),
 
+  // Authentication Actions
+  setAuthUser: (user) => {
+    set((state) => ({
+      auth: { ...state.auth, user, isAuthenticated: !!user }
+    }));
+    // Sync to localStorage
+    if (user) {
+      localStorage.setItem('authUser', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('authUser');
+    }
+  },
+  setAuthToken: (token) => {
+    set((state) => ({
+      auth: { ...state.auth, token }
+    }));
+    // Sync to localStorage
+    if (token) {
+      localStorage.setItem('authToken', token);
+    } else {
+      localStorage.removeItem('authToken');
+    }
+  },
+  setAuthLoading: (loading) => set((state) => ({
+    auth: { ...state.auth, loading }
+  })),
+  setAuthError: (error) => set((state) => ({
+    auth: { ...state.auth, error }
+  })),
+  setAuthData: (authData) => {
+    set((state) => ({
+      auth: {
+        ...state.auth,
+        user: authData.user,
+        token: authData.access_token,
+        isAuthenticated: !!authData.user,
+        error: null
+      }
+    }));
+    // Sync to localStorage
+    if (authData.access_token) {
+      localStorage.setItem('authToken', authData.access_token);
+    }
+    if (authData.user) {
+      localStorage.setItem('authUser', JSON.stringify(authData.user));
+    }
+  },
+  clearAuth: () => {
+    set((state) => ({
+      auth: {
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        loading: false,
+        error: null
+      }
+    }));
+    // Clear localStorage
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+  },
+  
+  // Initialize auth from localStorage
+  initAuthFromStorage: () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const userStr = localStorage.getItem('authUser');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      if (token || user) {
+        set((state) => ({
+          auth: {
+            ...state.auth,
+            user,
+            token,
+            isAuthenticated: !!user
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to initialize auth from localStorage:', error);
+    }
+  },
+
+  // Project Editor Actions
+  setProjectEditorStep: (step) => set((state) => ({
+    projectEditor: { ...state.projectEditor, currentStep: step }
+  })),
+  setQuestionsData: (data) => set((state) => ({
+    projectEditor: { ...state.projectEditor, questionsData: data }
+  })),
+  setVideoTypeSelection: (selection) => set((state) => ({
+    projectEditor: { ...state.projectEditor, videoTypeSelection: selection, currentStep: 'user_prompt' }
+  })),
+  setUserPrompt: (prompt) => set((state) => ({
+    projectEditor: { ...state.projectEditor, userPrompt: prompt, currentStep: 'preference_questions' }
+  })),
+  setPreferenceAnswer: (questionKey, answer) => set((state) => ({
+    projectEditor: {
+      ...state.projectEditor,
+      preferenceAnswers: { ...state.projectEditor.preferenceAnswers, [questionKey]: answer }
+    }
+  })),
+  setChatMessages: (messages) => set((state) => ({
+    projectEditor: { ...state.projectEditor, chatMessages: messages }
+  })),
+  resetProjectEditor: () => {
+    console.log('🏪 Store: Resetting project editor state');
+    set((state) => ({
+      projectEditor: {
+        currentStep: 'greeting',
+        questionsData: null,
+        videoTypeSelection: null,
+        userPrompt: '',
+        preferenceAnswers: {},
+        chatMessages: [],
+      }
+    }));
+  },
+
+  // Clear project editor after successful API call
+  clearProjectEditorAfterSave: () => {
+    console.log('🏪 Store: Clearing project editor after successful save');
+    set((state) => ({
+      projectEditor: {
+        ...state.projectEditor,
+        preferenceAnswers: {},
+        userPrompt: '',
+        videoTypeSelection: null,
+      }
+    }));
+  },
+
   fetchProjects: async (page = 1, limit = 10) => {
     set({ loading: true, error: null });
     try {
       const data = await projectApi.getProjects({ page, limit });
-      set({ projects: data, loading: false });
+      get().setProjects(data);
+      set({ loading: false });
     } catch (e) {
       set({ error: e.message || "Failed to fetch projects", loading: false });
     }
+  },
+
+  // Project management methods
+  addProject: (project) => {
+    const { projects } = get();
+    const updatedProjects = [...projects, project];
+    get().setProjects(updatedProjects);
+  },
+
+  updateProject: (projectId, updates) => {
+    const { projects } = get();
+    const updatedProjects = projects.map(project => 
+      project.id === projectId ? { ...project, ...updates } : project
+    );
+    get().setProjects(updatedProjects);
+  },
+
+  removeProject: (projectId) => {
+    const { projects, selectedProject } = get();
+    const updatedProjects = projects.filter(project => project.id !== projectId);
+    get().setProjects(updatedProjects);
+    
+    // Clear selected project if it was removed
+    if (selectedProject && selectedProject.id === projectId) {
+      get().clearSelectedProject();
+    }
+  },
+
+  clearProjects: () => {
+    get().setProjects([]);
+  },
+
+  getProjectById: (projectId) => {
+    const { projects } = get();
+    return projects.find(project => project.id === projectId);
   },
   fetchProjectEssentials: async (projectId) => {
     const { setSegmentations, setImages, setVideos } = get();
@@ -334,12 +582,33 @@ const storeImpl = (set, get) => ({
       research: [],
       selectedProject: null,
     });
+    
+    // Clear the selected project and projects list
+    get().clearSelectedProject();
+    get().clearProjects();
   },
 });
 
-export const useProjectStore =
-  window.__MY_GLOBAL_PROJECT_STORE__ || create(storeImpl);
+// Create the store instance
+const createProjectStore = () => create(storeImpl);
 
-if (!window.__MY_GLOBAL_PROJECT_STORE__) {
-  window.__MY_GLOBAL_PROJECT_STORE__ = useProjectStore;
-}
+// Use a single store instance globally to maintain consistency with other stores
+export const useProjectStore = (() => {
+  if (typeof window !== 'undefined') {
+    if (!window.__MY_GLOBAL_PROJECT_STORE__) {
+      window.__MY_GLOBAL_PROJECT_STORE__ = createProjectStore();
+      console.log('✅ ProjectStore: Created global instance');
+      
+      // Initialize auth from localStorage
+      window.__MY_GLOBAL_PROJECT_STORE__.getState().initAuthFromStorage();
+      
+      // Also expose for debugging
+      window.debugProjectStore = window.__MY_GLOBAL_PROJECT_STORE__;
+      console.log('🐛 Debug store available at: window.debugProjectStore');
+    }
+    return window.__MY_GLOBAL_PROJECT_STORE__;
+  } else {
+    // Server-side rendering fallback
+    return createProjectStore();
+  }
+})();

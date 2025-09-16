@@ -10,7 +10,7 @@
     "build:flow-widget": "vite build --config vite.flow-widget.config.ts",
     "build:user-profile-dropdown": "vite build --config vite.user-profile-dropdown.config.ts",
     "build:chat-interface": "vite build --config vite.chat-interface.config.ts",
-    "build:all-widgets": "vite build --config vite.widget.config.ts && vite build --config vite.flow-widget.config.ts && vite build --config vite.user-profile-dropdown.config.ts && vite build --config vite.chat-interface.config.ts",
+    "build:all": "vite build --config vite.widget.config.ts && vite build --config vite.chat-interface.config.ts && vite build --config vite.user-profile-dropdown.config.ts && vite build --config vite.flow-widget.config.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -21,6 +21,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-to-webcomponent": "^1.7.0",
+    "usuals-ai": "file:..",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

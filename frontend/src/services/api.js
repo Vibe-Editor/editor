@@ -1,12 +1,26 @@
-import { axiosInstance, API_BASE_URL } from "../lib/axiosInstance";
+import axios from "axios";
+import { API_BASE_URL } from "../config/baseurl.js";
+
+// Create axios instance with base URL from config
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+});
 // Utility function to get auth headers
 export const getAuthHeaders = async () => {
   const headers = {
     "Content-Type": "application/json",
   };
 
-  // Get token from localStorage (for web) or Electron store
-  let token = localStorage.getItem("authToken");
+  // Get token from Zustand store first, fallback to localStorage
+  let token = null;
+  if (window.__MY_GLOBAL_PROJECT_STORE__) {
+    token = window.__MY_GLOBAL_PROJECT_STORE__.getState().auth.token;
+  }
+  
+  // Fallback to localStorage if Zustand doesn't have token
+  if (!token) {
+    token = localStorage.getItem("authToken");
+  }
 
   // If we're in Electron, try to get token from Electron store
   if (
@@ -18,12 +32,16 @@ export const getAuthHeaders = async () => {
       const tokenResult = await window.electronAPI.req.auth.getToken();
       if (tokenResult.status === 1 && tokenResult.token) {
         token = tokenResult.token;
-        // Sync with localStorage for consistency
+        // Update Zustand store and localStorage
+        if (window.__MY_GLOBAL_PROJECT_STORE__) {
+          window.__MY_GLOBAL_PROJECT_STORE__.getState().setAuthToken(token);
+        }
+        // Also sync to localStorage for compatibility
         localStorage.setItem("authToken", token);
       }
     } catch (error) {
       console.warn("Failed to get token from Electron store:", error);
-      // Fallback to localStorage token
+      // Fallback 
     }
   }
 

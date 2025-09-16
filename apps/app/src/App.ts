@@ -7,6 +7,7 @@ import { IUIStore, uiStore } from "./states/uiStore";
 import "./features/demo/warningDemoEnv";
 import "./ui/control/ControlPanel";
 import "./ui/control/RightPanel";
+import "./ui/modal/VideoEditModal";
 
 @customElement("app-root")
 export class App extends LitElement {
@@ -112,6 +113,14 @@ export class App extends LitElement {
             z-index: 10000;
           `;
           document.body.appendChild(chatToggleContainer);
+          // Move existing "show chat interface" button into this container so it sits beside the chat toggle button
+          const showChatBtn = document.getElementById("show-chat-interface-btn");
+          if (showChatBtn) {
+            // Remove previously applied fixed positioning classes (from Tailwind) that conflict with container layout
+            showChatBtn.classList.remove("fixed", "top-5", "right-5");
+            // Append into the flex container so it aligns horizontally with gap
+            chatToggleContainer.appendChild(showChatBtn);
+          }
         }
 
         /*** VERTICAL ACTION BAR (persistent) ***/
@@ -330,7 +339,6 @@ export class App extends LitElement {
 
 
               #video {
-                aspect-ratio: 16/9 !important;
                 width: 600px !important;
                 max-width: 70% !important;
                 height: auto !important;
@@ -340,9 +348,7 @@ export class App extends LitElement {
                 overflow: hidden !important;
                 position: relative !important;
                 margin: 0 auto !important;
-                /* Ensure strict 16:9 ratio maintenance */
                 min-width: 320px !important;
-                min-height: 180px !important;
               }
 
               /* Remove size variations - keep consistent size */
@@ -360,9 +366,8 @@ export class App extends LitElement {
 
               preview-canvas {
                 width: 100% !important;
-                height: 100% !important;
+                height: auto !important;
                 display: block !important;
-                aspect-ratio: 16/9 !important;
               }
 
               /* Responsive adjustments - consistent smaller size */
@@ -1094,8 +1099,11 @@ export class App extends LitElement {
           const flowWidget = document.querySelector(
             'react-flow-widget[data-open="true"]',
           );
+          const chatInterface = document.querySelector(
+            'react-chat-interface[data-open="true"]',
+          );
 
-          if (chatWidget || flowWidget) {
+          if (chatWidget || flowWidget || chatInterface) {
             publishButton.style.opacity = "0";
             publishButton.style.pointerEvents = "none";
           } else {
@@ -1125,8 +1133,67 @@ export class App extends LitElement {
           });
         }
 
+        // Observe chat interface
+        const chatInterface = document.querySelector("react-chat-interface");
+        if (chatInterface) {
+          observer.observe(chatInterface, {
+            attributes: true,
+            attributeFilter: ["data-open"],
+          });
+        }
+
         // Initial check
         updatePublishButtonVisibility();
+
+        // Function to hide timeline UI elements when sandbox is opened
+        const hideTimelineElements = () => {
+          const chatToggleContainer = document.getElementById("chat-toggle-container");
+          const leftActionBar = document.getElementById("left-action-bar");
+          const controlPanel = document.querySelector("control-panel");
+          const timelineUI = document.getElementById("split_bottom");
+
+          if (chatToggleContainer) {
+            chatToggleContainer.style.display = "none";
+          }
+          if (leftActionBar) {
+            leftActionBar.style.display = "none";
+          }
+          if (controlPanel) {
+            (controlPanel as HTMLElement).style.display = "none";
+          }
+          if (timelineUI) {
+            timelineUI.style.display = "none";
+          }
+        };
+
+        // Function to show timeline UI elements when sandbox is closed
+        const showTimelineElements = () => {
+          const chatToggleContainer = document.getElementById("chat-toggle-container");
+          const leftActionBar = document.getElementById("left-action-bar");
+          const controlPanel = document.querySelector("control-panel");
+          const timelineUI = document.getElementById("split_bottom");
+
+          if (chatToggleContainer) {
+            chatToggleContainer.style.display = "flex";
+          }
+          if (leftActionBar) {
+            leftActionBar.style.display = "flex";
+          }
+          if (controlPanel) {
+            (controlPanel as HTMLElement).style.display = "block";
+          }
+          if (timelineUI) {
+            timelineUI.style.display = "block";
+          }
+        };
+
+        // Listen for sandbox open/close events
+        window.addEventListener("sandbox:opened", hideTimelineElements);
+        window.addEventListener("sandbox:closed", showTimelineElements);
+        
+        // Listen for chat interface open/close events
+        window.addEventListener("chatInterface:opened", hideTimelineElements);
+        window.addEventListener("chatInterface:closed", showTimelineElements);
       }
     }, 1000);
 
@@ -1210,6 +1277,7 @@ export class App extends LitElement {
         <style id="fontStyles" ref="fontStyles"></style>
 
         <toast-box></toast-box>
+        <video-edit-modal></video-edit-modal>
 
         <warning-demo></warning-demo>
       </body>

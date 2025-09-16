@@ -34,7 +34,7 @@
         <!-- ChatWidget styles -->
         <link rel="stylesheet" href="dist/widget/frontend.css" />
         <!-- React ChatWidget bundle -->
-        <script src="dist/widget/chat-widget.umd.js"></script>
+        <!-- <script src="dist/widget/chat-widget.umd.js"></script> -->
         <!-- React FlowWidget bundle -->
         <script src="dist/widget/flow-widget.umd.js"></script>
         <!-- React UserProfileDropdown bundle -->
@@ -46,12 +46,12 @@
         <react-chat-interface id="chat-interface-overlay" class="fixed inset-0 w-full h-full z-[9999] bg-gray-900"></react-chat-interface>
 
         <!-- Switch back to ChatInterface button (hidden initially) -->
-        <button id="show-chat-interface-btn" onclick="showChatInterface()" class="hidden fixed top-5 right-5 z-[9998] bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 px-5 py-3 rounded-lg font-semibold cursor-pointer shadow-lg shadow-blue-500/30 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/40">
-          🤖 AI Chat Interface
+        <button id="show-chat-interface-btn" onclick="showChatInterface()" class="hidden fixed top-5 right-5 z-[9998]  text-white border-0 p-3 w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/40">
+          <span class="material-symbols-outlined text-white text-2xl">home</span>
         </button>
 
         <!-- Place widget elements (bottom-right fixed) - Main Electron UI -->
-        <react-chat-widget></react-chat-widget>
+        <!-- <react-chat-widget></react-chat-widget> -->
         <react-flow-widget></react-flow-widget>
         <react-user-profile-dropdown></react-user-profile-dropdown>
 
@@ -67,6 +67,9 @@
             if (button) {
               button.classList.add('hidden');
             }
+            
+            // Dispatch event to open the chat interface and hide timeline elements
+            window.dispatchEvent(new CustomEvent("chatInterface:open"));
           }
 
           function hideChatInterface() {
@@ -78,7 +81,14 @@
             if (button) {
               button.classList.remove('hidden');
             }
+            
+            // Dispatch event to close the chat interface and show timeline elements
+            window.dispatchEvent(new CustomEvent("chatInterface:close"));
           }
+
+          // Expose functions globally for external access
+          window.showChatInterface = showChatInterface;
+          window.hideChatInterface = hideChatInterface;
 
           // Show the switch button when ChatInterface is hidden
           window.addEventListener('load', function() {
