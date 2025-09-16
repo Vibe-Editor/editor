@@ -81,7 +81,7 @@ const ProjectEditor = () => {
     setInputValue('');
   };
 
-  const handlePreferenceAnswer = (questionKey, answer) => {
+  const handlePreferenceAnswer = async (questionKey, answer) => {
     setPreferenceAnswer(questionKey, answer);
 
     const questionKeys = Object.keys(projectEditor.questionsData?.preference_questions || {});
@@ -93,11 +93,61 @@ const ProjectEditor = () => {
         {
           id: projectEditor.chatMessages.length + 1,
           type: 'bot',
-          content: 'Excellent! I have all the information I need. Let me start creating your video...',
+          content: 'Excellent! I have all the information I need. Let me save your preferences and start creating your video...',
           timestamp: new Date()
         }
       ]);
+      
+      // Save video preferences
+      await saveVideoPreferences({ ...projectEditor.preferenceAnswers, [questionKey]: answer });
       setProjectEditorStep('completed');
+    }
+  };
+
+  const saveVideoPreferences = async (allAnswers) => {
+    try {
+      if (!selectedProject?.id) {
+        console.error('No project selected');
+        return;
+      }
+
+      // Map the answers to the API format
+      const preferences = {
+        user_prompt: projectEditor.userPrompt,
+        video_type: projectEditor.videoTypeSelection?.id || 'talking_head',
+        visual_style: allAnswers.visual_style || 'cool_corporate',
+        lighting_mood: allAnswers.mood_tone || 'bright_minimal',
+        camera_style: allAnswers.camera_movement || 'static_locked',
+        subject_focus: allAnswers.subject_focus || 'person_vr',
+        location_environment: allAnswers.environment_space || 'minimal_room'
+      };
+
+      console.log('Saving video preferences:', preferences);
+      
+      const result = await questionsApi.createVideoPreferences(selectedProject.id, preferences);
+      console.log('Video preferences saved successfully:', result);
+      
+      setChatMessages([
+        ...projectEditor.chatMessages,
+        {
+          id: projectEditor.chatMessages.length + 2,
+          type: 'bot',
+          content: 'Perfect! Your video preferences have been saved. Your video is now being created...',
+          timestamp: new Date()
+        }
+      ]);
+      
+    } catch (error) {
+      console.error('Failed to save video preferences:', error);
+      setChatMessages([
+        ...projectEditor.chatMessages,
+        {
+          id: projectEditor.chatMessages.length + 2,
+          type: 'bot',
+          content: 'There was an issue saving your preferences, but I\'ll still create your video with the information provided.',
+          timestamp: new Date()
+        }
+      ]);
     }
   };
 
