@@ -66,6 +66,9 @@ const storeImpl = (set, get) => ({
     console.log('🏪 Store: Setting selected project:', project?.name);
     set({ selectedProject: project });
     
+    // Clear project editor state when switching projects
+    get().resetProjectEditor();
+    
     // Update storedVideosMap based on project selection
     const { setStoredVideosMap } = get();
     if (project) {
@@ -243,16 +246,32 @@ const storeImpl = (set, get) => ({
   setChatMessages: (messages) => set((state) => ({
     projectEditor: { ...state.projectEditor, chatMessages: messages }
   })),
-  resetProjectEditor: () => set((state) => ({
-    projectEditor: {
-      currentStep: 'greeting',
-      questionsData: null,
-      videoTypeSelection: null,
-      userPrompt: '',
-      preferenceAnswers: {},
-      chatMessages: [],
-    }
-  })),
+  resetProjectEditor: () => {
+    console.log('🏪 Store: Resetting project editor state');
+    set((state) => ({
+      projectEditor: {
+        currentStep: 'greeting',
+        questionsData: null,
+        videoTypeSelection: null,
+        userPrompt: '',
+        preferenceAnswers: {},
+        chatMessages: [],
+      }
+    }));
+  },
+
+  // Clear project editor after successful API call
+  clearProjectEditorAfterSave: () => {
+    console.log('🏪 Store: Clearing project editor after successful save');
+    set((state) => ({
+      projectEditor: {
+        ...state.projectEditor,
+        preferenceAnswers: {},
+        userPrompt: '',
+        videoTypeSelection: null,
+      }
+    }));
+  },
 
   fetchProjects: async (page = 1, limit = 10) => {
     set({ loading: true, error: null });

@@ -15,6 +15,7 @@ const ProjectEditor = () => {
   const setPreferenceAnswer = useProjectStore((state) => state.setPreferenceAnswer);
   const setChatMessages = useProjectStore((state) => state.setChatMessages);
   const resetProjectEditor = useProjectStore((state) => state.resetProjectEditor);
+  const clearProjectEditorAfterSave = useProjectStore((state) => state.clearProjectEditorAfterSave);
   
   const [inputValue, setInputValue] = useState('');
 
@@ -126,6 +127,9 @@ const ProjectEditor = () => {
       
       const result = await questionsApi.createVideoPreferences(selectedProject.id, preferences);
       console.log('Video preferences saved successfully:', result);
+      
+      // Clear the project editor state after successful save
+      clearProjectEditorAfterSave();
       
       setChatMessages([
         ...projectEditor.chatMessages,
