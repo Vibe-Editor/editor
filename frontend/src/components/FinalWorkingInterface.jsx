@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useAuthStore } from "../hooks/useAuthStore";
 import { projectApi } from "../services/project";
 import { creditApi } from "../services/credit";
 import ChatLoginButton from "./ChatLoginButton";
@@ -7,11 +8,13 @@ import CreditPurchase from "./CreditPurchase";
 import InterfaceSidebar from "./InterfaceSidebar";
 import { assets } from "../assets/assets";
 import { CLOUDFRONT_URL } from "../config/baseurl.js";
+import { useProjectStore } from "../store/useProjectStore";
 
 const FinalWorkingInterface = () => {
   console.log("🔧 FinalWorkingInterface rendering...");
 
   const { user, isAuthenticated } = useAuth();
+  const authStore = useAuthStore();
   const [PaymentSuccessComponent, setPaymentSuccessComponent] = useState(null);
   const [recentProjects, setRecentProjects] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
@@ -412,12 +415,11 @@ const FinalWorkingInterface = () => {
       window.__MY_GLOBAL_PROJECT_STORE__.getState().setSelectedProject(project);
     }
     
-    // Dispatch event to notify FlowWidget about project selection
-    window.dispatchEvent(new CustomEvent('projectChanged', { 
+    // Dispatch event to open project editor
+    window.dispatchEvent(new CustomEvent('openProjectEditor', { 
       detail: { project: project } 
     }));
     
-    await navigateToEditorWithChat(project, "");
     setOpenDropdownId(null); // Close dropdown
   };
 
@@ -811,7 +813,7 @@ const FinalWorkingInterface = () => {
           onSectionChange={setActiveSection}
           onToggleAllProjects={(show) => setShowAllProjects(show)}
           onPurchaseCredits={() => {
-            const token = localStorage.getItem("authToken");
+            const token = authStore.token;
             console.log("🔘 User object:", user);
             console.log("🔘 User ID:", user?.id);
             console.log("🔘 Token exists:", !!token);

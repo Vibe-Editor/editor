@@ -18,6 +18,25 @@ const storeImpl = (set, get) => ({
   summaries: [],
   research: [],
   loading: false,
+  
+  // Authentication State
+  auth: {
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    loading: false,
+    error: null,
+  },
+  
+  // Project Editor State
+  projectEditor: {
+    currentStep: 'greeting',
+    questionsData: null,
+    videoTypeSelection: null,
+    userPrompt: '',
+    preferenceAnswers: {},
+    chatMessages: [],
+  },
   loadingData: {
     conversations: false,
     concepts: false,
@@ -117,6 +136,123 @@ const storeImpl = (set, get) => ({
   setSummaries: (summaries) => set({ summaries }),
   setResearch: (research) => set({ research }),
   setCreditBalance: (balance) => set({ creditBalance: balance }),
+
+  // Authentication Actions
+  setAuthUser: (user) => {
+    set((state) => ({
+      auth: { ...state.auth, user, isAuthenticated: !!user }
+    }));
+    // Sync to localStorage
+    if (user) {
+      localStorage.setItem('authUser', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('authUser');
+    }
+  },
+  setAuthToken: (token) => {
+    set((state) => ({
+      auth: { ...state.auth, token }
+    }));
+    // Sync to localStorage
+    if (token) {
+      localStorage.setItem('authToken', token);
+    } else {
+      localStorage.removeItem('authToken');
+    }
+  },
+  setAuthLoading: (loading) => set((state) => ({
+    auth: { ...state.auth, loading }
+  })),
+  setAuthError: (error) => set((state) => ({
+    auth: { ...state.auth, error }
+  })),
+  setAuthData: (authData) => {
+    set((state) => ({
+      auth: {
+        ...state.auth,
+        user: authData.user,
+        token: authData.access_token,
+        isAuthenticated: !!authData.user,
+        error: null
+      }
+    }));
+    // Sync to localStorage
+    if (authData.access_token) {
+      localStorage.setItem('authToken', authData.access_token);
+    }
+    if (authData.user) {
+      localStorage.setItem('authUser', JSON.stringify(authData.user));
+    }
+  },
+  clearAuth: () => {
+    set((state) => ({
+      auth: {
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        loading: false,
+        error: null
+      }
+    }));
+    // Clear localStorage
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+  },
+  
+  // Initialize auth from localStorage
+  initAuthFromStorage: () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const userStr = localStorage.getItem('authUser');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      if (token || user) {
+        set((state) => ({
+          auth: {
+            ...state.auth,
+            user,
+            token,
+            isAuthenticated: !!user
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to initialize auth from localStorage:', error);
+    }
+  },
+
+  // Project Editor Actions
+  setProjectEditorStep: (step) => set((state) => ({
+    projectEditor: { ...state.projectEditor, currentStep: step }
+  })),
+  setQuestionsData: (data) => set((state) => ({
+    projectEditor: { ...state.projectEditor, questionsData: data }
+  })),
+  setVideoTypeSelection: (selection) => set((state) => ({
+    projectEditor: { ...state.projectEditor, videoTypeSelection: selection, currentStep: 'user_prompt' }
+  })),
+  setUserPrompt: (prompt) => set((state) => ({
+    projectEditor: { ...state.projectEditor, userPrompt: prompt, currentStep: 'preference_questions' }
+  })),
+  setPreferenceAnswer: (questionKey, answer) => set((state) => ({
+    projectEditor: {
+      ...state.projectEditor,
+      preferenceAnswers: { ...state.projectEditor.preferenceAnswers, [questionKey]: answer }
+    }
+  })),
+  setChatMessages: (messages) => set((state) => ({
+    projectEditor: { ...state.projectEditor, chatMessages: messages }
+  })),
+  resetProjectEditor: () => set((state) => ({
+    projectEditor: {
+      currentStep: 'greeting',
+      questionsData: null,
+      videoTypeSelection: null,
+      userPrompt: '',
+      preferenceAnswers: {},
+      chatMessages: [],
+    }
+  })),
 
   fetchProjects: async (page = 1, limit = 10) => {
     set({ loading: true, error: null });
@@ -434,15 +570,26 @@ const storeImpl = (set, get) => ({
   },
 });
 
-export const useProjectStore =
-  window.__MY_GLOBAL_PROJECT_STORE__ || create(storeImpl);
+// Create the store instance
+const createProjectStore = () => create(storeImpl);
 
-if (!window.__MY_GLOBAL_PROJECT_STORE__) {
-  window.__MY_GLOBAL_PROJECT_STORE__ = useProjectStore;
-  
-  
-  setTimeout(() => {
-    const store = useProjectStore.getState();
-    console.log('✅ ProjectStore: Initialized in memory mode');
-  }, 0);
-}
+// Use a single store instance globally to maintain consistency with other stores
+export const useProjectStore = (() => {
+  if (typeof window !== 'undefined') {
+    if (!window.__MY_GLOBAL_PROJECT_STORE__) {
+      window.__MY_GLOBAL_PROJECT_STORE__ = createProjectStore();
+      console.log('✅ ProjectStore: Created global instance');
+      
+      // Initialize auth from localStorage
+      window.__MY_GLOBAL_PROJECT_STORE__.getState().initAuthFromStorage();
+      
+      // Also expose for debugging
+      window.debugProjectStore = window.__MY_GLOBAL_PROJECT_STORE__;
+      console.log('🐛 Debug store available at: window.debugProjectStore');
+    }
+    return window.__MY_GLOBAL_PROJECT_STORE__;
+  } else {
+    // Server-side rendering fallback
+    return createProjectStore();
+  }
+})();
