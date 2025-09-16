@@ -16,7 +16,9 @@
     "bundle:prod:src": "webpack --mode=production",
     "compile:prod": "tsc -p ./.tsconfig",
     "build:win": "npm run bundle:prod:src && electron-builder build --win --x64",
+
     "prebuild:mac": "npm --prefix ./frontend ci && (npm --prefix ./frontend run build:all || npm --prefix ./frontend run build:all-widgets) && npm --prefix ./apps/overlay-record ci && npm --prefix ./apps/overlay-record run build && npm --prefix ./packages/render ci && npm --prefix ./packages/render run build && npm run compile:prod",
+
     "build:mac": "npm run bundle:prod:src && electron-builder build --mac",
     "build:mas": "npm run bundle:prod:src && electron-builder build --mac mas",
     "build": "npm run build:win"
@@ -76,6 +78,8 @@
         "^node_modules/(.+)/(test|tests|__tests__)/.*"
       ]
     },
+    "afterSign": "electron/notarize.js",
+    "afterAllArtifactBuild": "electron/afterAll.js",
     "dmg": {
       "contents": [
         {
@@ -135,6 +139,7 @@
     ]
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.540.0",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@imgly/background-removal": "^1.5.8",
@@ -149,6 +154,7 @@
     "concurrently": "^9.0.1",
     "decompress": "4.2.1",
     "decompress-zip": "0.3.3",
+    "dotenv": "^16.4.5",
     "electron-is-dev": "^2.0.0",
     "electron-log": "^4.4.8",
     "electron-progressbar": "^2.0.1",
@@ -171,8 +177,6 @@
     "request": "^2.88.2",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "@aws-sdk/client-s3": "^3.540.0",
-    "dotenv": "^16.4.5",
     "ts-loader": "^9.5.1",
     "typescript": "^5.8.3",
     "uuid": "^9.0.0",
@@ -183,6 +187,7 @@
   "devDependencies": {
     "@babel/core": "^7.22.1",
     "@babel/preset-env": "^7.22.4",
+    "@electron/notarize": "^2.5.0",
     "babel-loader": "^9.1.2",
     "cross-env": "^7.0.3",
     "css-loader": "^6.7.1",
