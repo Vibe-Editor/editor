@@ -17,6 +17,7 @@ import {
   IRenderOptionStore,
   renderOptionStore,
 } from "../../states/renderOptionStore";
+import "../../ui/modal/VideoEditModal";
 
 interface ObjectClassType {
   [elementId: string]: number;
@@ -47,6 +48,8 @@ export class elementTimelineCanvas extends LitElement {
   copyedTimelineData: {};
   isGuide: boolean;
   targetIdDuringRightClick: any;
+  lastClickTime: number;
+  lastClickTarget: string;
 
   constructor() {
     super();
@@ -66,6 +69,8 @@ export class elementTimelineCanvas extends LitElement {
     this.timelineColor = {};
     this.canvasVerticalScroll = 0;
     this.copyedTimelineData = {};
+    this.lastClickTime = 0;
+    this.lastClickTarget = "";
 
     window.addEventListener("resize", this.drawCanvas);
     window.addEventListener("keydown", this._handleKeydown.bind(this));
@@ -1132,6 +1137,27 @@ export class elementTimelineCanvas extends LitElement {
     );
   }
 
+  public openVideoEditModal(videoId: string) {
+    console.log("Opening video edit modal for:", videoId);
+    
+    if (!videoId || !this.timeline[videoId] || this.timeline[videoId].filetype !== "video") {
+      console.error("Invalid video element for editing:", videoId, this.timeline[videoId]);
+      return;
+    }
+
+    let videoEditModal = document.querySelector("video-edit-modal");
+    console.log("Found video edit modal:", videoEditModal);
+    
+    if (!videoEditModal) {
+      console.log("Creating new video edit modal");
+      videoEditModal = document.createElement("video-edit-modal");
+      document.body.appendChild(videoEditModal);
+    }
+    
+    console.log("Calling show on modal with videoId:", videoId);
+    videoEditModal.show(videoId);
+  }
+
   animationPanelDropdownTemplate() {
     if (this.targetId.length != 1) {
       return "";
@@ -1156,6 +1182,20 @@ export class elementTimelineCanvas extends LitElement {
     return template;
   }
 
+  videoEditDropdownTemplate() {
+    if (this.targetId.length != 1) {
+      return "";
+    }
+
+    if (this.timeline[this.targetId[0]].filetype !== "video") {
+      return "";
+    }
+
+    let itemOnclickEvent = `document.querySelector('element-timeline-canvas').openVideoEditModal('${this.targetId[0]}')`;
+    let template = `<menu-dropdown-item onclick="${itemOnclickEvent}" item-name="Edit Video with AI"></menu-dropdown-item>`;
+    return template;
+  }
+
   isShowAnimationPanel() {
     const index = this.isOpenAnimationPanelId.findIndex((item) => {
       return this.targetId.includes(item);
@@ -1167,6 +1207,7 @@ export class elementTimelineCanvas extends LitElement {
   showMenuDropdown({ x, y }) {
     document.querySelector("#menuRightClick").innerHTML = `
         <menu-dropdown-body top="${y}" left="${x}">
+        ${this.videoEditDropdownTemplate()}
         ${this.animationPanelDropdownTemplate()}
           <menu-dropdown-item onclick="document.querySelector('element-timeline-canvas').splitAtCursor()" item-name="split at cursor"> </menu-dropdown-item>
           <menu-dropdown-item onclick="document.querySelector('element-timeline-canvas').removeSeletedElements()" item-name="remove"> </menu-dropdown-item>
@@ -1372,6 +1413,20 @@ export class elementTimelineCanvas extends LitElement {
 
       const target = this.findTarget({ x: x, y: y });
       console.log('Mouse down - target found:', target);
+
+      // Handle double-click for video editing
+      const currentTime = Date.now();
+      const isDoubleClick = (currentTime - this.lastClickTime) < 500 && 
+                           this.lastClickTarget === target.targetId;
+      
+      if (isDoubleClick && target.targetId && 
+          this.timeline[target.targetId]?.filetype === "video") {
+        this.openVideoEditModal(target.targetId);
+        return;
+      }
+      
+      this.lastClickTime = currentTime;
+      this.lastClickTarget = target.targetId;
 
       if (e.shiftKey && target.targetId != "") {
         this.targetId.push(target.targetId);
