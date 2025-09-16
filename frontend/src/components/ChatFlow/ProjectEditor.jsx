@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useProjectStore } from '../store/useProjectStore';
+import { useProjectStore } from '../../store/useProjectStore';
 import VideoGrid from './VideoGrid';
 import QuestionsFlow from './QuestionsFlow';
-import { assets } from '../assets/assets';
-import { questionsApi } from '../services/questions';
+import { assets } from '../../assets/assets';
+import { questionsApi } from '../../services/questions';
 
 const ProjectEditor = () => {
   const selectedProject = useProjectStore((state) => state.selectedProject);

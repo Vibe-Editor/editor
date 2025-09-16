@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import FinalWorkingInterface from './FinalWorkingInterface';
+import FinalWorkingInterface from '../FinalWorkingInterface';
 import ProjectEditor from './ProjectEditor';
 import StoreProvider from './StoreProvider';
 import ErrorBoundary from './ErrorBoundary';

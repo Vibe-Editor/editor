@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useProjectStore } from '../store/useProjectStore';
+import { useProjectStore } from '../../store/useProjectStore';
 
 const StoreProvider = ({ children }) => {
   const [storeReady, setStoreReady] = useState(false);
