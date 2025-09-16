@@ -1,8 +1,10 @@
 import React, { useRef, useState } from "react";
+import TemplateSelection from "./TemplateSelection";
 
-const StoryArcEngine = ({ onGoHome }) => {
+const StoryArcEngine = () => {
   const [wordCount, setWordCount] = useState(86);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [showTemplateSelection, setShowTemplateSelection] = useState(false);
   const [sections, setSections] = useState([
     {
       title: 'SET THE SCENE',
@@ -31,8 +33,8 @@ const StoryArcEngine = ({ onGoHome }) => {
     },
   ]);
   const draftRef = useRef(sections.map((s) => s.content));
-  const minWordCount = 60;
-  const maxWordCount = 140;
+  const minWordCount = 100;
+  const maxWordCount = 350;
 
   const enterEdit = (index) => {
     draftRef.current[index] = sections[index].content;
@@ -66,20 +68,40 @@ const StoryArcEngine = ({ onGoHome }) => {
     // Let native copy/cut/paste (C/X/V) work by default
   };
 
+  const handleProceed = () => {
+    setShowTemplateSelection(true);
+  };
+
+  const handleCloseTemplateSelection = () => {
+    setShowTemplateSelection(false);
+  };
+
+  const handleTemplateSelect = (template) => {
+    console.log('Selected template:', template);
+    // Handle template selection logic here
+    // You can add navigation or state management as needed
+  };
+
+  // Show TemplateSelection when proceed is clicked
+  if (showTemplateSelection) {
+    return (
+      <TemplateSelection
+        storyArcData={{
+          sections,
+          wordCount
+        }}
+        onClose={handleCloseTemplateSelection}
+        onTemplateSelect={handleTemplateSelect}
+      />
+    );
+  }
+
   return (
     <div className='min-h-screen flex flex-col bg-[#F8FFB8] p-8 font-mono'>
       {/* Header */}
       <div className='grid grid-cols-[1fr_auto_1fr] items-center mb-12'>
-        {/* Left - Story Selection with Home Button */}
+        {/* Left - Story Selection */}
         <div className='flex items-center gap-4'>
-          {onGoHome && (
-            <button
-              onClick={onGoHome}
-              className='bg-gray-200 hover:bg-gray-300 text-black px-3 py-1 rounded text-xs font-medium transition-colors'
-            >
-              ← Home
-            </button>
-          )}
         </div>
 
         {/* Center - Title */}
@@ -419,6 +441,7 @@ const StoryArcEngine = ({ onGoHome }) => {
           <span
             className='whitespace-nowrap font-bold underline underline-offset-2 text-black cursor-pointer hover:opacity-80'
             aria-label='Proceed to template selection'
+            onClick={handleProceed}
           >
             PROCEED
           </span>

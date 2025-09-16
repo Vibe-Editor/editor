@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
 import VideoGrid from './VideoGrid';
 import QuestionsFlow from './QuestionsFlow';
+import StoryArcEngine from './StoryArc';
 import { assets } from '../../assets/assets';
 import { questionsApi } from '../../services/questions';
 
@@ -18,6 +19,7 @@ const ProjectEditor = () => {
   const clearProjectEditorAfterSave = useProjectStore((state) => state.clearProjectEditorAfterSave);
   
   const [inputValue, setInputValue] = useState('');
+  const [showStoryArc, setShowStoryArc] = useState(false);
 
   useEffect(() => {
     if (selectedProject) {
@@ -101,7 +103,7 @@ const ProjectEditor = () => {
       
       // Save video preferences
       await saveVideoPreferences({ ...projectEditor.preferenceAnswers, [questionKey]: answer });
-      setProjectEditorStep('completed');
+      setShowStoryArc(true);
     }
   };
 
@@ -159,12 +161,18 @@ const ProjectEditor = () => {
     window.dispatchEvent(new CustomEvent('projectEditor:close'));
   };
 
+
   if (!selectedProject) {
     return (
       <div className="w-full h-screen bg-black flex items-center justify-center">
         <div className="text-white text-xl">No project selected</div>
       </div>
     );
+  }
+
+  // Show StoryArc when completed
+  if (showStoryArc) {
+    return <StoryArcEngine />;
   }
 
   return (
@@ -264,19 +272,6 @@ const ProjectEditor = () => {
             />
           )}
 
-          {projectEditor.currentStep === 'completed' && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-black" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <h2 className="text-white text-2xl font-semibold mb-2">All Set!</h2>
-                <p className="text-gray-400">Your video is being created based on your preferences.</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
