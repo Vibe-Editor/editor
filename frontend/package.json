@@ -21,6 +21,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-to-webcomponent": "^1.7.0",
+    "usuals-ai": "file:..",
     "zustand": "^5.0.6"
   },
   "devDependencies": {
