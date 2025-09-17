@@ -5,6 +5,7 @@ import QuestionsFlow from './QuestionsFlow';
 import StoryArcEngine from './StoryArc';
 import { assets } from '../../assets/assets';
 import { questionsApi } from '../../services/questions';
+import { storyEngineApi } from '../../services/storyEngine';
 
 const ProjectEditor = () => {
   const selectedProject = useProjectStore((state) => state.selectedProject);
@@ -21,6 +22,8 @@ const ProjectEditor = () => {
   const [inputValue, setInputValue] = useState('');
   const [showStoryArc, setShowStoryArc] = useState(false);
   const [storyArcIn, setStoryArcIn] = useState(false);
+  const [storyData, setStoryData] = useState(null);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
 
   useEffect(() => {
     if (selectedProject) {
@@ -129,6 +132,18 @@ const ProjectEditor = () => {
       const result = await questionsApi.createVideoPreferences(selectedProject.id, preferences);
       console.log('Video preferences saved successfully:', result);
       
+      // Generate concept with preferences after successful save
+      try {
+        const conceptResult = await storyEngineApi.generateConceptWithPreferences(selectedProject.id);
+        console.log('Concept generated successfully:', conceptResult);
+        setStoryData(conceptResult.data);
+      } catch (conceptError) {
+        console.error('Failed to generate concept:', conceptError);
+        // Continue with the flow even if concept generation fails
+      } finally {
+        setIsGeneratingStory(false);
+      }
+      
       // Clear the project editor state after successful save
       clearProjectEditorAfterSave();
       
@@ -158,8 +173,9 @@ const ProjectEditor = () => {
 
   const handleGenerateScript = async () => {
     const allAnswers = { ...projectEditor.preferenceAnswers };
-    await saveVideoPreferences(allAnswers);
+    setIsGeneratingStory(true);
     setShowStoryArc(true);
+    await saveVideoPreferences(allAnswers);
   };
 
   const handleClose = () => {
@@ -180,7 +196,7 @@ const ProjectEditor = () => {
     return (
       <div className={`w-full h-screen bg-black overflow-hidden`}> 
         <div className={`w-full h-full transform transition-transform duration-500 ease-out ${storyArcIn ? 'translate-x-0' : 'translate-x-full'}`}>
-          <StoryArcEngine />
+          <StoryArcEngine storyData={storyData} isLoading={isGeneratingStory} />
         </div>
       </div>
     );
