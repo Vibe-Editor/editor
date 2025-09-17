@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import TemplateSelection from "./TemplateSelection";
+import { storyEngineApi } from "../../services/storyEngine";
 
 // Section titles are always the same
 const sectionTitles = [
@@ -10,12 +11,15 @@ const sectionTitles = [
   'WRAP IT UP'
 ];
 
+
 const StoryArcEngine = ({ storyData, isLoading = false }) => {
   const [wordCount, setWordCount] = useState(150);
   const [editingIndex, setEditingIndex] = useState(null);
   const [showTemplateSelection, setShowTemplateSelection] = useState(false);
 
   const [sections, setSections] = useState([]);
+  const [segmentIds, setSegmentIds] = useState([]);
+  const [savingIndex, setSavingIndex] = useState(null);
   const draftRef = useRef([]);
   const minWordCount = 100;
   const maxWordCount = 350;
@@ -25,6 +29,7 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
     if (!storyData?.storySegments) return;
     
     const mappedSections = [];
+    const mappedSegmentIds = [];
     
     // Create sections in the correct order
     const orderedTypes = ['setTheScene', 'ruinThings', 'theBreakingPoint', 'cleanUpTheMess', 'wrapItUp'];
@@ -35,9 +40,11 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
         title: sectionTitles[index],
         content: segment?.visual || ''
       });
+      mappedSegmentIds.push(segment?.id || null);
     });
     
     setSections(mappedSections);
+    setSegmentIds(mappedSegmentIds);
     draftRef.current = mappedSections.map((s) => s.content);
   }, [storyData]);
 
@@ -57,11 +64,33 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
     setEditingIndex(index);
   };
 
-  const saveEdit = (index) => {
-    const updated = [...sections];
-    updated[index] = { ...updated[index], content: draftRef.current[index] };
-    setSections(updated);
-    setEditingIndex(null);
+  const saveEdit = async (index) => {
+    try {
+      setSavingIndex(index);
+      const newContent = draftRef.current[index];
+      const segmentId = segmentIds[index];
+      
+      // Update local state first
+      const updated = [...sections];
+      updated[index] = { ...updated[index], content: newContent };
+      setSections(updated);
+      setEditingIndex(null);
+      
+      // Call API to update in database
+      if (segmentId) {
+        await storyEngineApi.updateStorySegment(segmentId, newContent);
+        console.log(`Updated segment ${segmentId} successfully`);
+      }
+    } catch (error) {
+      console.error('Failed to save story segment:', error);
+      // Revert local changes if API call fails
+      const reverted = [...sections];
+      reverted[index] = { ...reverted[index], content: sections[index].content };
+      setSections(reverted);
+      // Keep editing mode open so user can try again
+    } finally {
+      setSavingIndex(null);
+    }
   };
 
   const cancelEdit = (index) => {
@@ -122,7 +151,7 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
 
         {/* Center - Title */}
         <h1 className='text-3xl font-bold text-center tracking-wider justify-self-center'>
-          Story Arc Engine
+          Story Engine
         </h1>
 
         {/* Right - Word Count */}
@@ -192,12 +221,16 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
               <div
                 role='button'
                 aria-label='Save section SET THE SCENE'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 0 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(0)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 0 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -250,12 +283,16 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
               <div
                 role='button'
                 aria-label='Save section RUIN THINGS'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 1 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(1)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 1 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -306,12 +343,16 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
               <div
                 role='button'
                 aria-label='Save section THE BREAKING POINT'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 2 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(2)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 2 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -364,12 +405,16 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
               <div
                 role='button'
                 aria-label='Save section CLEAN UP THE MESS'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 3 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(3)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 3 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -422,12 +467,16 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
               <div
                 role='button'
                 aria-label='Save section WRAP IT UP'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 4 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(4)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 4 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'

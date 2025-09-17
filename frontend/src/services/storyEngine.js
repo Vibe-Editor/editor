@@ -23,4 +23,20 @@ export const storyEngineApi = {
       throw error;
     }
   },
+
+  // Update story segment
+  updateStorySegment: async (segmentId, content) => {
+    try {
+      const headers = await getAuthHeaders();
+      const { data } = await axiosInstance.put(
+        `/projects/${segmentId}/storyline`,
+        { content },
+        { headers },
+      );
+      return data;
+    } catch (error) {
+      console.error("Error in updateStorySegment:", error);
+      throw error;
+    }
+  },
 };
