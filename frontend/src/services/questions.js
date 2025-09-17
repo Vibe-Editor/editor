@@ -25,9 +25,9 @@ export const questionsApi = {
     try {
       const headers = await getAuthHeaders();
       const { data } = await axiosInstance.post(
-        `/projects/${projectId}/video-preferences`, 
-        preferences, 
-        { headers }
+        `/projects/${projectId}/generate-concept-with-preferences`,
+        preferences,
+        { headers },
       );
       return data;
     } catch (error) {
@@ -41,9 +41,9 @@ export const questionsApi = {
     try {
       const headers = await getAuthHeaders();
       const { data } = await axiosInstance.patch(
-        `/projects/${projectId}/video-preferences`, 
-        preferences, 
-        { headers }
+        `/projects/${projectId}/video-preferences`,
+        preferences,
+        { headers },
       );
       return data;
     } catch (error) {
@@ -57,8 +57,8 @@ export const questionsApi = {
     try {
       const headers = await getAuthHeaders();
       const { data } = await axiosInstance.get(
-        `/projects/${projectId}/video-preferences`, 
-        { headers }
+        `/projects/${projectId}/video-preferences`,
+        { headers },
       );
       return data;
     } catch (error) {
