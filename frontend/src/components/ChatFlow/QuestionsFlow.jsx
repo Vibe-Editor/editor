@@ -61,6 +61,32 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenera
     }
   };
 
+  const handlePrevious = () => {
+    if (currentQuestionIndex > 0) {
+      setAnimationPhase('in');
+      setTimeout(() => {
+        setCurrentQuestionIndex((prev) => prev - 1);
+        setSelectedAnswer(null);
+        setTimeout(() => setAnimationPhase('idle'), 20);
+      }, 10);
+    }
+  };
+
+  const handleNext = () => {
+    // Only allow going to next if current question is answered
+    if (currentQuestionIndex < questionKeys.length - 1 && selectedAnswer) {
+      setAnimationPhase('out');
+      setTimeout(() => {
+        setCurrentQuestionIndex((prev) => prev + 1);
+        setSelectedAnswer(null);
+        setAnimationPhase('in');
+        setTimeout(() => {
+          setAnimationPhase('idle');
+        }, 20);
+      }, 250);
+    }
+  };
+
   if (!currentQuestion && !showReady) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -70,35 +96,21 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenera
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 relative">
-      {/* Back Button */}
-      <div
-        className={`absolute top-4 left-4 z-10 ${currentQuestionIndex > 0 || showReady ? 'opacity-100' : 'opacity-50'} cursor-pointer`}
-        onClick={handleBack}
-        role="button"
-        aria-label="Go back"
-        title="Back"
-      >
-        <div className="w-10 h-10 rounded-full bg-gray-800/80 border border-gray-700 flex items-center justify-center hover:bg-gray-700/80 transition-colors">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </div>
-      </div>
-      <div className="mb-8 text-center">
-        <div className="flex items-center justify-center mb-4">
+    <div className="max-w-6xl mx-auto p-2 relative">
+      <div className="mb-4 text-center">
+        <div className="flex items-center justify-center mb-2">
           <div className="flex space-x-2">
             {questionKeys.map((_, index) => (
               <div
                 key={index}
-                className={`w-3 h-3 rounded-full ${
+                className={`w-2 h-2 rounded-full ${
                   index <= currentQuestionIndex ? 'bg-yellow-400' : 'bg-gray-600'
                 }`}
               />
             ))}
           </div>
         </div>
-        <h2 className="text-white text-2xl font-semibold mb-2">
+        <h2 className="text-white text-lg font-semibold mb-1">
           {currentQuestion.question}
         </h2>
         <p className="text-gray-400">
@@ -124,15 +136,21 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenera
               options={currentQuestion.options}
               onSelect={handleAnswerSelect}
               selectedId={selectedAnswer?.id}
+              compact
+              showNavigation={true}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              canGoPrevious={currentQuestionIndex > 0}
+              canGoNext={currentQuestionIndex < questionKeys.length - 1 && selectedAnswer}
             />
           </div>
         ) : (
-          <div className="w-full h-64 flex flex-col items-center justify-center text-center space-y-4">
-            <h3 className="text-white text-2xl font-semibold">Ready to generate script</h3>
+          <div className="w-full h-56 flex flex-col items-center justify-center text-center space-y-3">
+            <h3 className="text-white text-xl font-semibold">Ready to generate script</h3>
             <p className="text-gray-400">We have enough preferences to start crafting your Story Arc.</p>
             <button
               onClick={() => onGenerateScript && onGenerateScript()}
-              className="px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors"
+              className="px-5 py-2 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors"
             >
               Generate Script
             </button>

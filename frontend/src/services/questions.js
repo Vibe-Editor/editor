@@ -25,7 +25,7 @@ export const questionsApi = {
     try {
       const headers = await getAuthHeaders();
       const { data } = await axiosInstance.post(
-        `/projects/${projectId}/generate-concept-with-preferences`,
+        `/projects/${projectId}/video-preferences`,
         preferences,
         { headers },
       );
