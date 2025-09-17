@@ -212,7 +212,7 @@ const ProjectEditor = () => {
 
   if (!selectedProject) {
     return (
-      <div className='w-full h-screen bg-black flex items-center justify-center'>
+      <div className='w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex items-center justify-center'>
         <div className='text-white text-xl'>No project selected</div>
       </div>
     );
@@ -234,7 +234,7 @@ const ProjectEditor = () => {
   }
 
   return (
-    <div className='w-full h-screen bg-black flex flex-col relative'>
+    <div className='w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex flex-col relative'>
       {/* Absolute positioned header elements */}
       <div className='absolute top-6 left-6 z-10 flex items-center gap-3'>
         <img src={assets.SandBoxLogo} alt='Usuals.ai' className='w-10 h-10' />
@@ -398,11 +398,31 @@ const ProjectEditor = () => {
         </div>
       </div>
 
+       {/* Progress Loader (visible during preference questions) */}
+       {!showStoryArc && projectEditor.currentStep === "preference_questions" && projectEditor.questionsData && (
+         <div className='absolute bottom-[7.5rem] left-0 right-0 px-4 z-10'>
+           <div className='w-full max-w-[54rem] mx-auto'>
+             <div className={`w-full h-1 rounded-full overflow-hidden ${
+               Object.keys(projectEditor.preferenceAnswers || {}).length > 0 
+                 ? 'bg-[#f9d21229]' 
+                 : 'bg-gray-700'
+             }`}>
+               <div 
+                 className='h-full bg-yellow-400 transition-all duration-500 ease-out'
+                 style={{ 
+                   width: `${(Object.keys(projectEditor.preferenceAnswers || {}).length / Object.keys(projectEditor.questionsData?.preference_questions || {}).length) * 100}%` 
+                 }}
+               />
+             </div>
+           </div>
+         </div>
+       )}
+
       {/* Bottom Centered Input (visible throughout the flow until Generate Script) */}
       {!showStoryArc && (
         <div className='w-full px-4 py-6 pb-6 flex items-center justify-center'>
           <div className='w-full max-w-4xl'>
-            <div className='bg-gradient-to-t from-[#20272B] to-[#000000] rounded-2xl border-1 border-white/30 p-4'>
+            <div className='bg-gradient-to-t from-[#20272B] to-[#000000] rounded-2xl border-1 border-white/30 p-6'>
               <div className='flex items-center gap-4'>
                 <input
                   type='text'

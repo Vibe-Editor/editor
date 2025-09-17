@@ -98,18 +98,6 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenera
   return (
     <div className="max-w-6xl mx-auto p-2 relative">
       <div className="mb-4 text-center">
-        <div className="flex items-center justify-center mb-2">
-          <div className="flex space-x-2">
-            {questionKeys.map((_, index) => (
-              <div
-                key={index}
-                className={`w-2 h-2 rounded-full ${
-                  index <= currentQuestionIndex ? 'bg-yellow-400' : 'bg-gray-600'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
         <h2 className="text-white text-lg font-semibold mb-1">
           {currentQuestion.question}
         </h2>
