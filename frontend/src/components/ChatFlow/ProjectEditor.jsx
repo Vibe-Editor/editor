@@ -20,6 +20,7 @@ const ProjectEditor = () => {
   
   const [inputValue, setInputValue] = useState('');
   const [showStoryArc, setShowStoryArc] = useState(false);
+  const [storyArcIn, setStoryArcIn] = useState(false);
 
   useEffect(() => {
     if (selectedProject) {
@@ -27,6 +28,15 @@ const ProjectEditor = () => {
       fetchQuestions();
     }
   }, [selectedProject]);
+
+  useEffect(() => {
+    if (showStoryArc) {
+      const id = setTimeout(() => setStoryArcIn(true), 10);
+      return () => clearTimeout(id);
+    } else {
+      setStoryArcIn(false);
+    }
+  }, [showStoryArc]);
 
   const initializeChat = () => {
     setChatMessages([
@@ -172,7 +182,13 @@ const ProjectEditor = () => {
 
   // Show StoryArc when completed
   if (showStoryArc) {
-    return <StoryArcEngine />;
+    return (
+      <div className={`w-full h-screen bg-black overflow-hidden`}> 
+        <div className={`w-full h-full transform transition-transform duration-500 ease-out ${storyArcIn ? 'translate-x-0' : 'translate-x-full'}`}>
+          <StoryArcEngine />
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -4,6 +4,7 @@ import VideoGrid from './VideoGrid';
 const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [animationPhase, setAnimationPhase] = useState('idle'); // 'idle' | 'out' | 'in'
 
   const questionKeys = Object.keys(questionsData.preference_questions || {});
   const currentQuestionKey = questionKeys[currentQuestionIndex];
@@ -15,26 +16,27 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers }) => {
   }, [currentQuestionKey, currentAnswers]);
 
   const handleAnswerSelect = (option) => {
+    // Immediately submit the answer
     setSelectedAnswer(option);
-  };
+    onAnswerSubmit(currentQuestionKey, option);
 
-  const handleNext = () => {
-    if (!selectedAnswer) return;
-    
-    onAnswerSubmit(currentQuestionKey, selectedAnswer);
-    
     if (isLastQuestion) {
+      // Parent will transition to Story Arc; no local advance
       return;
     }
-    
-    setCurrentQuestionIndex(prev => prev + 1);
-    setSelectedAnswer(null);
-  };
 
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    }
+    // Trigger swipe-left animation for current grid, then advance
+    setAnimationPhase('out');
+    setTimeout(() => {
+      setCurrentQuestionIndex((prev) => prev + 1);
+      setSelectedAnswer(null);
+      // Mount next grid off-screen to the right
+      setAnimationPhase('in');
+      // Next tick, slide it to center
+      setTimeout(() => {
+        setAnimationPhase('idle');
+      }, 20);
+    }, 250);
   };
 
   if (!currentQuestion) {
@@ -54,11 +56,7 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers }) => {
               <div
                 key={index}
                 className={`w-3 h-3 rounded-full ${
-                  index < currentQuestionIndex
-                    ? 'bg-yellow-400'
-                    : index === currentQuestionIndex
-                    ? 'bg-yellow-400'
-                    : 'bg-gray-600'
+                  index <= currentQuestionIndex ? 'bg-yellow-400' : 'bg-gray-600'
                 }`}
               />
             ))}
@@ -72,28 +70,25 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers }) => {
         </p>
       </div>
 
-      <VideoGrid
-        options={currentQuestion.options}
-        onSelect={handleAnswerSelect}
-        selectedId={selectedAnswer?.id}
-      />
-
-      <div className="flex justify-between items-center mt-8">
-        <button
-          onClick={handlePrevious}
-          disabled={currentQuestionIndex === 0}
-          className="px-6 py-3 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+      {/* Animated grid with overflow hidden to avoid scrollbars during slide */}
+      <div className="overflow-hidden">
+        <div
+          key={currentQuestionKey}
+          className={`transform-gpu transition-transform duration-500 ease-in-out ${
+            animationPhase === 'out'
+              ? '-translate-x-full'
+              : animationPhase === 'in'
+              ? 'translate-x-full'
+              : 'translate-x-0'
+          }`}
+          style={{ willChange: 'transform' }}
         >
-          Previous
-        </button>
-        
-        <button
-          onClick={handleNext}
-          disabled={!selectedAnswer}
-          className="px-6 py-3 bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-600 disabled:opacity-50 text-black rounded-lg font-medium transition-colors"
-        >
-          {isLastQuestion ? 'Complete' : 'Next'}
-        </button>
+          <VideoGrid
+            options={currentQuestion.options}
+            onSelect={handleAnswerSelect}
+            selectedId={selectedAnswer?.id}
+          />
+        </div>
       </div>
     </div>
   );
