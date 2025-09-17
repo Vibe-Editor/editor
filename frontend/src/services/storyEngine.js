@@ -39,4 +39,23 @@ export const storyEngineApi = {
       throw error;
     }
   },
+
+  // Regenerate segments with word limit
+  regenerateSegments: async (segmentIds, maxWordCount) => {
+    try {
+      const headers = await getAuthHeaders();
+      const { data } = await axiosInstance.put(
+        `/projects/${segmentIds[0]}/regenerate-segments`,
+        { 
+          segmentIds,
+          maxWordCount 
+        },
+        { headers },
+      );
+      return data;
+    } catch (error) {
+      console.error("Error in regenerateSegments:", error);
+      throw error;
+    }
+  },
 };

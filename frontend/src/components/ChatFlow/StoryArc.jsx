@@ -20,9 +20,11 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
   const [sections, setSections] = useState([]);
   const [segmentIds, setSegmentIds] = useState([]);
   const [savingIndex, setSavingIndex] = useState(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const draftRef = useRef([]);
   const minWordCount = 100;
   const maxWordCount = 350;
+  const regenerateTimeoutRef = useRef(null);
 
   // Update sections when storyData changes
   React.useEffect(() => {
@@ -47,6 +49,15 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
     setSegmentIds(mappedSegmentIds);
     draftRef.current = mappedSections.map((s) => s.content);
   }, [storyData]);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (regenerateTimeoutRef.current) {
+        clearTimeout(regenerateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Skeleton loading component
   const SkeletonLoader = () => (
@@ -96,6 +107,54 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
   const cancelEdit = (index) => {
     draftRef.current[index] = sections[index].content;
     setEditingIndex(null);
+  };
+
+  const handleWordCountChange = (newWordCount) => {
+    // Clear existing timeout
+    if (regenerateTimeoutRef.current) {
+      clearTimeout(regenerateTimeoutRef.current);
+    }
+
+    // Set new timeout for 2 seconds
+    regenerateTimeoutRef.current = setTimeout(async () => {
+      if (segmentIds.length > 0 && segmentIds.every(id => id !== null)) {
+        try {
+          setIsRegenerating(true);
+          const result = await storyEngineApi.regenerateSegments(segmentIds, newWordCount);
+          console.log('Segments regenerated successfully:', result);
+          
+          // Update sections with new data
+          console.log('Regenerate response:', result);
+          
+          // Check if result is an array directly or nested under data
+          const segments = Array.isArray(result) ? result : result.data || result;
+          
+          if (segments && segments.length > 0) {
+            const mappedSections = [];
+            const mappedSegmentIds = [];
+            
+            const orderedTypes = ['setTheScene', 'ruinThings', 'theBreakingPoint', 'cleanUpTheMess', 'wrapItUp'];
+            
+            orderedTypes.forEach((type, index) => {
+              const segment = segments.find(s => s.type === type);
+              mappedSections.push({
+                title: sectionTitles[index],
+                content: segment?.description || ''
+              });
+              mappedSegmentIds.push(segment?.id || null);
+            });
+            
+            setSections(mappedSections);
+            setSegmentIds(mappedSegmentIds);
+            draftRef.current = mappedSections.map((s) => s.content);
+          }
+        } catch (error) {
+          console.error('Failed to regenerate segments:', error);
+        } finally {
+          setIsRegenerating(false);
+        }
+      }
+    }, 1000);
   };
 
   const handleEditableKeyDown = (e, index) => {
@@ -167,8 +226,13 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
               type='range'
               min={minWordCount}
               max={maxWordCount}
+              step={10}
               value={wordCount}
-              onChange={(e) => setWordCount(Number(e.target.value))}
+              onChange={(e) => {
+                const newValue = Math.round(Number(e.target.value) / 10) * 10;
+                setWordCount(newValue);
+                handleWordCountChange(newValue);
+              }}
               className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
               aria-label='Word count'
             />
@@ -179,7 +243,7 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
 
       {/* Main Story Arc - 5 Column Layout with Connecting Lines */}
       <div className='relative flex items-end justify-center gap-0 mb-12'>
-        {sections.length === 0 && isLoading ? (
+        {(sections.length === 0 && isLoading) || isRegenerating ? (
           // Show skeleton loading for all 5 sections
           <>
             {[0, 1, 2, 3, 4].map((index) => {
