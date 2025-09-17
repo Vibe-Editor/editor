@@ -113,15 +113,15 @@ const ProjectEditor = () => {
         return;
       }
 
-      // Map the answers to the API format
+      // Map the answers to the API format - extract only id values
       const preferences = {
         user_prompt: projectEditor.userPrompt,
         video_type: projectEditor.videoTypeSelection?.id || 'talking_head',
-        visual_style: allAnswers.visual_style || 'cool_corporate',
-        lighting_mood: allAnswers.mood_tone || 'bright_minimal',
-        camera_style: allAnswers.camera_movement || 'static_locked',
-        subject_focus: allAnswers.subject_focus || 'person_vr',
-        location_environment: allAnswers.environment_space || 'minimal_room'
+        visual_style: allAnswers.visual_style?.id || 'cool_corporate',
+        lighting_mood: allAnswers.mood_tone?.id || 'bright_minimal',
+        camera_style: allAnswers.camera_movement?.id || 'static_locked',
+        subject_focus: allAnswers.subject_focus?.id || 'person_vr',
+        location_environment: allAnswers.environment_space?.id || 'minimal_room'
       };
 
       console.log('Saving video preferences:', preferences);
