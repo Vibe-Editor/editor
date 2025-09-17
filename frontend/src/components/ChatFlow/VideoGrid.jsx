@@ -98,7 +98,7 @@ const VideoGrid = ({ options, onSelect, selectedId, compact = false, showNavigat
               <div className='absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/5'></div>
 
               {/* Sound Toggle Button */}
-              <button
+              <div
                 onClick={(e) => toggleSound(option.id, e)}
                 className='absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-md hover:bg-white/30 rounded-full flex items-center justify-center transition-all duration-200 border border-white/30'
               >
@@ -127,7 +127,7 @@ const VideoGrid = ({ options, onSelect, selectedId, compact = false, showNavigat
                     />
                   </svg>
                 )}
-              </button>
+              </div>
 
               {/* Selection Indicator */}
               {selectedId === option.id && (
