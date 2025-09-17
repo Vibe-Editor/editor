@@ -99,22 +99,9 @@ const ProjectEditor = () => {
 
     const questionKeys = Object.keys(projectEditor.questionsData?.preference_questions || {});
     const isLastQuestion = Object.keys(projectEditor.preferenceAnswers).length + 1 === questionKeys.length;
-    
-    if (isLastQuestion) {
-      setChatMessages([
-        ...projectEditor.chatMessages,
-        {
-          id: projectEditor.chatMessages.length + 1,
-          type: 'bot',
-          content: 'Excellent! I have all the information I need. Let me save your preferences and start creating your video...',
-          timestamp: new Date()
-        }
-      ]);
-      
-      // Save video preferences
-      await saveVideoPreferences({ ...projectEditor.preferenceAnswers, [questionKey]: answer });
-      setShowStoryArc(true);
-    }
+    // Do not auto-transition here; the QuestionsFlow will show a "Generate Script" CTA after 5th answer
+    // Intentionally do nothing here to avoid sidebar message; CTA appears in main area
+    if (isLastQuestion) {}
   };
 
   const saveVideoPreferences = async (allAnswers) => {
@@ -165,6 +152,12 @@ const ProjectEditor = () => {
         }
       ]);
     }
+  };
+
+  const handleGenerateScript = async () => {
+    const allAnswers = { ...projectEditor.preferenceAnswers };
+    await saveVideoPreferences(allAnswers);
+    setShowStoryArc(true);
   };
 
   const handleClose = () => {
@@ -285,6 +278,7 @@ const ProjectEditor = () => {
               questionsData={projectEditor.questionsData}
               onAnswerSubmit={handlePreferenceAnswer}
               currentAnswers={projectEditor.preferenceAnswers}
+              onGenerateScript={handleGenerateScript}
             />
           )}
 

@@ -10,6 +10,7 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
   const [animationPhase, setAnimationPhase] = useState('idle'); // 'idle' | 'out' | 'in'
   const [view, setView] = useState('grid'); // 'grid' | 'loading'
   const [fullLoading, setFullLoading] = useState(false); // fullscreen loading overlay
+  const [showReadyToGenerate, setShowReadyToGenerate] = useState(false);
 
   // Mock template data - replace with actual template data
   const templates = [
@@ -48,8 +49,8 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
     setAnimationPhase('out');
     setTimeout(() => {
       if (isLast) {
-        // Final selection → slide in fullscreen loading from right (overlay)
-        setFullLoading(true);
+        // Final selection → show Ready to generate button in main area
+        setShowReadyToGenerate(true);
         setAnimationPhase('in');
         setTimeout(() => setAnimationPhase('idle'), 20);
       } else {
@@ -99,12 +100,40 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
     );
   }
 
+  const handleBack = () => {
+    if (showReadyToGenerate) {
+      setShowReadyToGenerate(false);
+      return;
+    }
+    // Go back a section if possible
+    if (currentStep > 0) {
+      setAnimationPhase('in');
+      setTimeout(() => {
+        setExpandedSections((prev) => ({
+          ...prev,
+          [currentStep]: false,
+          [currentStep - 1]: true,
+        }));
+        setCurrentStep((prev) => prev - 1);
+        setTimeout(() => setAnimationPhase('idle'), 20);
+      }, 10);
+    } else if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleReadyGenerate = () => {
+    setFullLoading(true);
+    setAnimationPhase('in');
+    setTimeout(() => setAnimationPhase('idle'), 20);
+  };
+
   return (
     <div className="w-full h-screen bg-black flex">
       {/* Left Panel - Story Arc Content */}
       <div className="w-1/3 bg-gray-900 flex flex-col border-r border-gray-700">
         {/* Header */}
-        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between relative">
           <div className="flex items-center gap-3">
             <img src={assets.SandBoxLogo} alt="Usuals.ai" className="w-6 h-6" />
             <h1 className="text-white text-lg font-semibold">Story Arc</h1>
@@ -156,7 +185,21 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
       </div>
 
       {/* Right Panel - Template Selection */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative">
+        {/* Back Button in main content area */}
+        <div
+          className="absolute top-6 left-6 z-10 cursor-pointer"
+          onClick={handleBack}
+          role="button"
+          aria-label="Go back"
+          title="Back"
+        >
+          <div className="w-10 h-10 rounded-full bg-gray-800/80 border border-gray-700 flex items-center justify-center hover:bg-gray-700/80 transition-colors">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </div>
+        </div>
         <div className="flex-1 p-8 overflow-hidden">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-white text-3xl font-semibold mb-6 text-center">
@@ -168,7 +211,7 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
             
             {/* Animated content wrapper to avoid scrollbars */}
             <div className="overflow-hidden">
-              {view === 'grid' && (
+              {view === 'grid' && !showReadyToGenerate && (
                 <div
                   key={`grid-${currentStep}`}
                   className={`transform-gpu transition-transform duration-500 ease-in-out ${
@@ -230,7 +273,28 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
                 </div>
               )}
 
-              {/* Loading now shown as fullscreen overlay after last selection */}
+              {view === 'grid' && showReadyToGenerate && (
+                <div
+                  key={`ready-${currentStep}`}
+                  className={`transform-gpu transition-transform duration-500 ease-in-out ${
+                    animationPhase === 'in' ? 'translate-x-full' : 'translate-x-0'
+                  }`}
+                  style={{ willChange: 'transform' }}
+                >
+                  <div className="w-full h-64 flex flex-col items-center justify-center text-center space-y-4">
+                    <h3 className="text-white text-2xl font-semibold">Ready to generate videos</h3>
+                    <p className="text-gray-400">All selections are complete. Proceed when you are ready.</p>
+                    <button
+                      onClick={handleReadyGenerate}
+                      className="px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors"
+                    >
+                      Ready to generate videos
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Loading will show as fullscreen overlay after clicking ready */}
             </div>
           </div>
         </div>
