@@ -1,51 +1,96 @@
 import React, { useRef, useState } from "react";
 import TemplateSelection from "./TemplateSelection";
+import { storyEngineApi } from "../../services/storyEngine";
 
-const StoryArcEngine = () => {
-  const [wordCount, setWordCount] = useState(86);
+// Section titles are always the same
+const sectionTitles = [
+  'SET THE SCENE',
+  'RUIN THINGS', 
+  'THE BREAKING POINT',
+  'CLEAN UP THE MESS',
+  'WRAP IT UP'
+];
+
+
+const StoryArcEngine = ({ storyData, isLoading = false }) => {
+  const [wordCount, setWordCount] = useState(150);
   const [editingIndex, setEditingIndex] = useState(null);
   const [showTemplateSelection, setShowTemplateSelection] = useState(false);
-  const [sections, setSections] = useState([
-    {
-      title: 'SET THE SCENE',
-      content:
-        'The world is thrown into chaos as twelve colossal alien spacecraft, dubbed "shells," mysteriously appear at random locations across Earth. Dr. Louise Banks, a renowned linguist haunted by the memory of her daughter\'s death, is recruited by the US military to decipher the aliens\' complex language. Working alongside theoretical physicist Ian Donnelly, Louise grapples with the immense pressure to understand the extraterrestrial visitors\' intentions before global panic escalates into widespread conflict. The initial interactions are fraught with fear and misunderstanding.',
-    },
-    {
-      title: 'RUIN THINGS',
-      content:
-        'As Louise delves deeper into the heptapods\' non-linear language, she begins experiencing vivid flashes of memory - or perhaps premonitions - of her future daughter. These visions become increasingly intense and frequent, blurring the lines between past, present, and future. Meanwhile, global tensions rise as other nations, particularly China and Russia, grow suspicious and aggressive towards the aliens, threatening to launch an attack. Louise fears misinterpreting the heptapods\' message could have catastrophic global consequences.',
-    },
-    {
-      title: 'THE BREAKING POINT',
-      content:
-        'Louise has a profound breakthrough, understanding that the heptapods\' language is intrinsically linked to their perception of time. They experience all of time simultaneously, and learning their language grants humans this same ability. This realization is triggered by a vision of her future daughter, Hannah, and her eventual death. In a critical moment, Louise uses her newfound understanding of future events to prevent a military strike against the shells by making a crucial, life-altering phone call to Chinese General Shang.',
-    },
-    {
-      title: 'CLEAN UP THE MESS',
-      content:
-        'With the immediate threat of war averted, Louise works to fully integrate her understanding of the heptapods\' language and its temporal implications. She accepts the future she has foreseen, including the birth of her daughter Hannah, and the heartbreak of her eventual loss. The Shells depart, leaving behind a gift of their language, which promises to reshape human understanding of existence. Louise and Ian begin a relationship, knowing the path it will take.',
-    },
-    {
-      title: 'WRAP IT UP',
-      content:
-        'Humanity begins to adopt the heptapod language, fostering a sort of unified global perspective and an altered perception of time. Louise chooses to embrace her future, conceiving Hannah with Ian, fully aware of the joy and sorrow that lie ahead. The story concludes with Louise reflecting on her choice, finding profound meaning in the entirety of life\'s experiences, both happy and tragic, demonstrating the transformative power of understanding and acceptance.',
-    },
-  ]);
-  const draftRef = useRef(sections.map((s) => s.content));
+
+  const [sections, setSections] = useState([]);
+  const [segmentIds, setSegmentIds] = useState([]);
+  const [savingIndex, setSavingIndex] = useState(null);
+  const draftRef = useRef([]);
   const minWordCount = 100;
   const maxWordCount = 350;
+
+  // Update sections when storyData changes
+  React.useEffect(() => {
+    if (!storyData?.storySegments) return;
+    
+    const mappedSections = [];
+    const mappedSegmentIds = [];
+    
+    // Create sections in the correct order
+    const orderedTypes = ['setTheScene', 'ruinThings', 'theBreakingPoint', 'cleanUpTheMess', 'wrapItUp'];
+    
+    orderedTypes.forEach((type, index) => {
+      const segment = storyData.storySegments.find(s => s.type === type);
+      mappedSections.push({
+        title: sectionTitles[index],
+        content: segment?.visual || ''
+      });
+      mappedSegmentIds.push(segment?.id || null);
+    });
+    
+    setSections(mappedSections);
+    setSegmentIds(mappedSegmentIds);
+    draftRef.current = mappedSections.map((s) => s.content);
+  }, [storyData]);
+
+  // Skeleton loading component
+  const SkeletonLoader = () => (
+    <div className="animate-pulse">
+      <div className="h-3 bg-gray-300 rounded mb-2"></div>
+      <div className="h-3 bg-gray-300 rounded mb-2"></div>
+      <div className="h-3 bg-gray-300 rounded mb-2"></div>
+      <div className="h-3 bg-gray-300 rounded mb-2"></div>
+      <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+    </div>
+  );
 
   const enterEdit = (index) => {
     draftRef.current[index] = sections[index].content;
     setEditingIndex(index);
   };
 
-  const saveEdit = (index) => {
-    const updated = [...sections];
-    updated[index] = { ...updated[index], content: draftRef.current[index] };
-    setSections(updated);
-    setEditingIndex(null);
+  const saveEdit = async (index) => {
+    try {
+      setSavingIndex(index);
+      const newContent = draftRef.current[index];
+      const segmentId = segmentIds[index];
+      
+      // Update local state first
+      const updated = [...sections];
+      updated[index] = { ...updated[index], content: newContent };
+      setSections(updated);
+      setEditingIndex(null);
+      
+      // Call API to update in database
+      if (segmentId) {
+        await storyEngineApi.updateStorySegment(segmentId, newContent);
+        console.log(`Updated segment ${segmentId} successfully`);
+      }
+    } catch (error) {
+      console.error('Failed to save story segment:', error);
+      // Revert local changes if API call fails
+      const reverted = [...sections];
+      reverted[index] = { ...reverted[index], content: sections[index].content };
+      setSections(reverted);
+      // Keep editing mode open so user can try again
+    } finally {
+      setSavingIndex(null);
+    }
   };
 
   const cancelEdit = (index) => {
@@ -106,7 +151,7 @@ const StoryArcEngine = () => {
 
         {/* Center - Title */}
         <h1 className='text-3xl font-bold text-center tracking-wider justify-self-center'>
-          Story Arc Engine
+          Story Engine
         </h1>
 
         {/* Right - Word Count */}
@@ -134,8 +179,32 @@ const StoryArcEngine = () => {
 
       {/* Main Story Arc - 5 Column Layout with Connecting Lines */}
       <div className='relative flex items-end justify-center gap-0 mb-12'>
-        {/* Connecting Lines */}
-        <div className='absolute top-0 left-0 w-full h-full pointer-events-none'>
+        {sections.length === 0 && isLoading ? (
+          // Show skeleton loading for all 5 sections
+          <>
+            {[0, 1, 2, 3, 4].map((index) => {
+              const heights = [300, 400, 500, 400, 300]; // Different heights for each section
+              const borders = [
+                'border-t-2 border-l-2',
+                'border-t-2 border-l-2', 
+                'border-t-2 border-l-2 border-r-2',
+                'border-t-2 border-r-2',
+                'border-t-2 border-r-2'
+              ];
+              return (
+                <div key={index} className={`w-1/5 h-[${heights[index]}px] border-black ${borders[index]} bg-[#F8FFB8] p-3 text-xs relative z-10`}>
+                  <h2 className='font-bold mb-3 text-xs tracking-wider'>
+                    {sectionTitles[index]}
+                  </h2>
+                  <SkeletonLoader />
+                </div>
+              );
+            })}
+          </>
+        ) : (
+          <>
+            {/* Connecting Lines */}
+            <div className='absolute top-0 left-0 w-full h-full pointer-events-none'>
           {/* Horizontal line connecting all boxes */}
           <div className='absolute top-[200px] left-0 w-full h-0.5 bg-black'></div>
           {/* Vertical connecting lines */}
@@ -152,12 +221,16 @@ const StoryArcEngine = () => {
               <div
                 role='button'
                 aria-label='Save section SET THE SCENE'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 0 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(0)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 0 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -184,7 +257,7 @@ const StoryArcEngine = () => {
             </div>
           )}
           <h2 className='font-bold mb-3 text-xs tracking-wider'>
-            {sections[0].title}
+            {sectionTitles[0]}
           </h2>
           <p
             key={`content-0-${editingIndex === 0 ? 'edit' : 'view'}`}
@@ -199,7 +272,7 @@ const StoryArcEngine = () => {
               }
             }}
           >
-            {editingIndex === 0 ? draftRef.current[0] : sections[0].content}
+            {editingIndex === 0 ? draftRef.current[0] : sections[0]?.content || ''}
           </p>
         </div>
 
@@ -210,12 +283,16 @@ const StoryArcEngine = () => {
               <div
                 role='button'
                 aria-label='Save section RUIN THINGS'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 1 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(1)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 1 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -241,7 +318,7 @@ const StoryArcEngine = () => {
               </svg>
             </div>
           )}
-          <h2 className='font-bold mb-3 text-xs tracking-wider'>{sections[1].title}</h2>
+          <h2 className='font-bold mb-3 text-xs tracking-wider'>{sectionTitles[1]}</h2>
           <p
             key={`content-1-${editingIndex === 1 ? 'edit' : 'view'}`}
             className={`leading-relaxed text-[10px] ${editingIndex === 1 ? 'border-1 border-black p-2 outline-none focus:outline-none focus:ring-0' : ''}`}
@@ -255,7 +332,7 @@ const StoryArcEngine = () => {
               }
             }}
           >
-            {editingIndex === 1 ? draftRef.current[1] : sections[1].content}
+            {editingIndex === 1 ? draftRef.current[1] : sections[1]?.content || ''}
           </p>
         </div>
 
@@ -266,12 +343,16 @@ const StoryArcEngine = () => {
               <div
                 role='button'
                 aria-label='Save section THE BREAKING POINT'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 2 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(2)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 2 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -298,7 +379,7 @@ const StoryArcEngine = () => {
             </div>
           )}
           <h2 className='font-bold mb-3 text-xs tracking-wider'>
-            {sections[2].title}
+            {sectionTitles[2]}
           </h2>
           <p
             key={`content-2-${editingIndex === 2 ? 'edit' : 'view'}`}
@@ -313,7 +394,7 @@ const StoryArcEngine = () => {
               }
             }}
           >
-            {editingIndex === 2 ? draftRef.current[2] : sections[2].content}
+            {editingIndex === 2 ? draftRef.current[2] : sections[2]?.content || ''}
           </p>
         </div>
 
@@ -324,12 +405,16 @@ const StoryArcEngine = () => {
               <div
                 role='button'
                 aria-label='Save section CLEAN UP THE MESS'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 3 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(3)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 3 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -356,7 +441,7 @@ const StoryArcEngine = () => {
             </div>
           )}
           <h2 className='font-bold mb-3 text-xs tracking-wider'>
-            {sections[3].title}
+            {sectionTitles[3]}
           </h2>
           <p
             key={`content-3-${editingIndex === 3 ? 'edit' : 'view'}`}
@@ -371,7 +456,7 @@ const StoryArcEngine = () => {
               }
             }}
           >
-            {editingIndex === 3 ? draftRef.current[3] : sections[3].content}
+            {editingIndex === 3 ? draftRef.current[3] : sections[3]?.content || ''}
           </p>
         </div>
 
@@ -382,12 +467,16 @@ const StoryArcEngine = () => {
               <div
                 role='button'
                 aria-label='Save section WRAP IT UP'
-                className='cursor-pointer hover:opacity-80'
+                className={`cursor-pointer hover:opacity-80 ${savingIndex === 4 ? 'opacity-50' : ''}`}
                 onClick={() => saveEdit(4)}
               >
-                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
-                  <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
-                </svg>
+                {savingIndex === 4 ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-4 h-4'>
+                    <path d='M9 16.172 5.414 12.586l-1.828 1.828L9 19.828l12-12-1.828-1.828z'/>
+                  </svg>
+                )}
               </div>
               <div
                 role='button'
@@ -413,7 +502,7 @@ const StoryArcEngine = () => {
               </svg>
             </div>
           )}
-          <h2 className='font-bold mb-3 text-xs tracking-wider'>{sections[4].title}</h2>
+          <h2 className='font-bold mb-3 text-xs tracking-wider'>{sectionTitles[4]}</h2>
           <p
             key={`content-4-${editingIndex === 4 ? 'edit' : 'view'}`}
             className={`leading-relaxed text-[10px] flex-1 ${editingIndex === 4 ? 'border-1 border-black p-2 outline-none focus:outline-none focus:ring-0' : ''}`}
@@ -427,9 +516,11 @@ const StoryArcEngine = () => {
               }
             }}
           >
-            {editingIndex === 4 ? draftRef.current[4] : sections[4].content}
+            {editingIndex === 4 ? draftRef.current[4] : sections[4]?.content || ''}
           </p>
         </div>
+          </>
+        )}
       </div>
 
       {/* Footer */}

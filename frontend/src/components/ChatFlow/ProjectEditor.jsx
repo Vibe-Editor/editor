@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useProjectStore } from "../../store/useProjectStore";
+import { useAuthStore } from "../../hooks/useAuthStore";
 import VideoGrid from "./VideoGrid";
 import QuestionsFlow from "./QuestionsFlow";
 import StoryArcEngine from "./StoryArc";
 import { assets } from "../../assets/assets";
 import { questionsApi } from "../../services/questions";
+import { storyEngineApi } from "../../services/storyEngine";
 
 const ProjectEditor = () => {
   const selectedProject = useProjectStore((state) => state.selectedProject);
@@ -28,9 +30,14 @@ const ProjectEditor = () => {
     (state) => state.clearProjectEditorAfterSave,
   );
 
+  // Get user data for avatar
+  const { user } = useAuthStore();
+
   const [inputValue, setInputValue] = useState("");
   const [showStoryArc, setShowStoryArc] = useState(false);
   const [storyArcIn, setStoryArcIn] = useState(false);
+  const [storyData, setStoryData] = useState(null);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
 
   useEffect(() => {
     if (selectedProject) {
@@ -149,6 +156,21 @@ const ProjectEditor = () => {
       );
       console.log("Video preferences saved successfully:", result);
 
+      // Generate concept with preferences after successful save
+      try {
+        const conceptResult =
+          await storyEngineApi.generateConceptWithPreferences(
+            selectedProject.id,
+          );
+        console.log("Concept generated successfully:", conceptResult);
+        setStoryData(conceptResult.data);
+      } catch (conceptError) {
+        console.error("Failed to generate concept:", conceptError);
+        // Continue with the flow even if concept generation fails
+      } finally {
+        setIsGeneratingStory(false);
+      }
+
       // Clear the project editor state after successful save
       clearProjectEditorAfterSave();
 
@@ -179,8 +201,9 @@ const ProjectEditor = () => {
 
   const handleGenerateScript = async () => {
     const allAnswers = { ...projectEditor.preferenceAnswers };
-    await saveVideoPreferences(allAnswers);
+    setIsGeneratingStory(true);
     setShowStoryArc(true);
+    await saveVideoPreferences(allAnswers);
   };
 
   const handleClose = () => {
@@ -204,7 +227,7 @@ const ProjectEditor = () => {
             storyArcIn ? "translate-x-0" : "translate-x-full"
           }`}
         >
-          <StoryArcEngine />
+          <StoryArcEngine storyData={storyData} isLoading={isGeneratingStory} />
         </div>
       </div>
     );
@@ -223,8 +246,8 @@ const ProjectEditor = () => {
       {/* Top Right Buttons */}
       <div className='absolute top-6 right-6 z-10 flex items-center gap-3'>
         {/* Chat Button */}
-        <button
-          className='text-gray-400 hover:text-white transition-colors'
+        <div
+          className='text-gray-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer'
           aria-label='Chat'
           title='Chat'
         >
@@ -261,52 +284,52 @@ const ProjectEditor = () => {
                 stroke-linejoin='round'
               />
             </svg>
-            <p>Chat</p>
+            <span className='text-base'>Chat</span>
           </div>
-        </button>
+        </div>
 
         {/* Credits Button */}
-        <button
-          className='text-gray-400 hover:text-white transition-colors'
+        <div
+          className='text-[#F9D312] hover:text-[#F9D312] hover:bg-[#f9d21240] transition-colors border-1 border-[#F9D312] bg-[#f9d21229] px-3 py-1.5 rounded-lg cursor-pointer'
           aria-label='Credits'
           title='Credits'
         >
-          <div className='flex gap-2'>
+          <div className='flex items-center gap-2'>
             <svg
-              width='16'
-              height='16'
-              viewBox='0 0 16 16'
+              width='14'
+              height='14'
+              viewBox='0 0 14 14'
               fill='none'
               xmlns='http://www.w3.org/2000/svg'
             >
               <path
-                d='M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z'
+                d='M7 13C10.3137 13 13 10.3137 13 7C13 3.68629 10.3137 1 7 1C3.68629 1 1 3.68629 1 7C1 10.3137 3.68629 13 7 13Z'
                 stroke='#F9D312'
                 stroke-width='1.33'
                 stroke-linecap='round'
                 stroke-linejoin='round'
               />
               <path
-                d='M6.86848 6.46472C7.2645 6.0687 7.4625 5.87069 7.69083 5.7965C7.89168 5.73124 8.10802 5.73124 8.30887 5.7965C8.53719 5.87069 8.7352 6.0687 9.13122 6.46472L9.53515 6.86864C9.93116 7.26466 10.1292 7.46267 10.2034 7.69099C10.2686 7.89184 10.2686 8.10819 10.2034 8.30903C10.1292 8.53736 9.93116 8.73537 9.53515 9.13138L9.13122 9.53531C8.7352 9.93132 8.53719 10.1293 8.30887 10.2035C8.10802 10.2688 7.89168 10.2688 7.69083 10.2035C7.4625 10.1293 7.2645 9.93132 6.86848 9.53531L6.46455 9.13138C6.06854 8.73537 5.87053 8.53736 5.79634 8.30903C5.73108 8.10819 5.73108 7.89184 5.79634 7.69099C5.87053 7.46267 6.06854 7.26466 6.46455 6.86864L6.86848 6.46472Z'
+                d='M5.86848 5.46472C6.2645 5.0687 6.4625 4.87069 6.69083 4.7965C6.89168 4.73124 7.10802 4.73124 7.30887 4.7965C7.53719 4.87069 7.7352 5.0687 8.13122 5.46472L8.53515 5.86864C8.93116 6.26466 9.12917 6.46267 9.20336 6.69099C9.26862 6.89184 9.26862 7.10819 9.20336 7.30903C9.12917 7.53736 8.93116 7.73537 8.53515 8.13138L8.13122 8.53531C7.7352 8.93132 7.53719 9.12933 7.30887 9.20352C7.10802 9.26878 6.89168 9.26878 6.69083 9.20352C6.4625 9.12933 6.2645 8.93132 5.86848 8.53531L5.46455 8.13138C5.06854 7.73537 4.87053 7.53736 4.79634 7.30903C4.73108 7.10819 4.73108 6.89184 4.79634 6.69099C4.87053 6.46267 5.06854 6.26466 5.46455 5.86864L5.86848 5.46472Z'
                 stroke='#F9D312'
                 stroke-width='1.33'
                 stroke-linecap='round'
                 stroke-linejoin='round'
               />
             </svg>
-            <p>2000</p>
+            <span className='text-base'>2000</span>
           </div>
-        </button>
+        </div>
 
         {/* Close Button */}
-        <button
+        <div
           onClick={handleClose}
-          className='text-gray-400 hover:text-white transition-colors'
+          className='text-gray-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer'
           aria-label='Close'
           title='Close'
         >
           <svg
-            className='w-5 h-5'
+            className='w-7 h-7'
             fill='none'
             stroke='currentColor'
             viewBox='0 0 24 24'
@@ -318,7 +341,7 @@ const ProjectEditor = () => {
               d='M6 18L18 6M6 6l12 12'
             />
           </svg>
-        </button>
+        </div>
       </div>
 
       {/* Center Content Area - Now starts from top */}
@@ -417,8 +440,8 @@ const ProjectEditor = () => {
                   }`}
                 >
                   <svg
-                    width='28'
-                    height='29'
+                    width='32'
+                    height='33'
                     viewBox='0 0 28 29'
                     fill='none'
                     xmlns='http://www.w3.org/2000/svg'
@@ -444,6 +467,49 @@ const ProjectEditor = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* User Avatar - Bottom Left */}
+      {user?.email && (
+        <div className='absolute bottom-6 left-6 z-10 flex flex-col items-center gap-4'>
+          <div className='w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-white/20'>
+            <span className='text-black font-semibold text-lg'>
+              {user.email.charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <svg
+            width='22'
+            height='22'
+            viewBox='0 0 16 16'
+            fill='none'
+            xmlns='http://www.w3.org/2000/svg'
+          >
+            <path
+              d='M1.07077 8.19228L8.14166 8.14169M8.14166 8.14169L15.2125 8.09109M8.14166 8.14169L8.09106 1.0708M8.14166 8.14169L8.19226 15.2126'
+              stroke='white'
+              strokeOpacity='0.5'
+              strokeWidth='1.5'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            />
+          </svg>
+          <svg
+            width='22'
+            height='22'
+            viewBox='0 0 15 16'
+            fill='none'
+            xmlns='http://www.w3.org/2000/svg'
+          >
+            <path
+              d='M1.72554 1.07764C1.45221 2.12273 1.31561 3.19843 1.31882 4.2778C1.31967 4.55966 1.55547 4.6508 1.78517 4.70164L1.78697 4.70204M4.83628 4.99214C3.81119 5.02083 2.78708 4.92325 1.78697 4.70204M1.78697 4.70204C2.78677 3.11579 4.4462 1.95835 6.44625 1.6604C10.088 1.11789 13.4799 3.63028 14.0225 7.27199C14.565 10.9137 12.0526 14.3057 8.41086 14.8482C4.9002 15.3712 1.62163 13.0552 0.904175 9.62529M9.16692 10.4998L7.74433 9.07725C7.58805 8.92097 7.50026 8.70901 7.50026 8.488V5.49984'
+              stroke='white'
+              strokeOpacity='0.5'
+              strokeWidth='1.5'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            />
+          </svg>
         </div>
       )}
     </div>
