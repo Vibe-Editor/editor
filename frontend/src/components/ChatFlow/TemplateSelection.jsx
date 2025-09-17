@@ -105,7 +105,7 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
       setShowReadyToGenerate(false);
       return;
     }
-    // Go back a section if possible
+    // Go back a section if possible (only if not on step 0)
     if (currentStep > 0) {
       setAnimationPhase('in');
       setTimeout(() => {
@@ -117,9 +117,8 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
         setCurrentStep((prev) => prev - 1);
         setTimeout(() => setAnimationPhase('idle'), 20);
       }, 10);
-    } else if (onClose) {
-      onClose();
     }
+    // No back button functionality on step 0 - user must proceed through template selection
   };
 
   const handleReadyGenerate = () => {
@@ -186,20 +185,22 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
 
       {/* Right Panel - Template Selection */}
       <div className="flex-1 flex flex-col relative">
-        {/* Back Button in main content area */}
-        <div
-          className="absolute top-6 left-6 z-10 cursor-pointer"
-          onClick={handleBack}
-          role="button"
-          aria-label="Go back"
-          title="Back"
-        >
-          <div className="w-10 h-10 rounded-full bg-gray-800/80 border border-gray-700 flex items-center justify-center hover:bg-gray-700/80 transition-colors">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+        {/* Back Button in main content area - only show if not on step 0 */}
+        {currentStep > 0 && (
+          <div
+            className="absolute top-6 left-6 z-10 cursor-pointer"
+            onClick={handleBack}
+            role="button"
+            aria-label="Go back"
+            title="Back"
+          >
+            <div className="w-10 h-10 rounded-full bg-gray-800/80 border border-gray-700 flex items-center justify-center hover:bg-gray-700/80 transition-colors">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </div>
           </div>
-        </div>
+        )}
         <div className="flex-1 p-8 overflow-hidden">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-white text-3xl font-semibold mb-6 text-center">

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import TemplateSelection from "./TemplateSelection";
 import { storyEngineApi } from "../../services/storyEngine";
+import { templateService } from "../../services/template";
 
 // Section titles are always the same
 const sectionTitles = [
@@ -172,8 +173,51 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
     // Let native copy/cut/paste (C/X/V) work by default
   };
 
-  const handleProceed = () => {
-    setShowTemplateSelection(true);
+  const handleProceed = async () => {
+    console.log('Starting template search for all 5 story segments...');
+    
+    try {
+      // Make 5 parallel requests to find similar templates for each section
+      const templatePromises = sections.map(async (section, index) => {
+        console.log(`Making API request ${index + 1}/5 for section: ${section.title}`);
+        console.log(`Description: ${section.content}`);
+        
+        try {
+          const result = await templateService.findSimilarTemplates(section.content);
+          console.log(`✅ API request ${index + 1}/5 completed successfully:`, {
+            section: section.title,
+            templatesFound: result.templates?.length || 0,
+            totalCount: result.totalCount,
+            response: result
+          });
+          return {
+            sectionIndex: index,
+            sectionTitle: section.title,
+            result: result
+          };
+        } catch (error) {
+          console.error(`❌ API request ${index + 1}/5 failed for section ${section.title}:`, error);
+          return {
+            sectionIndex: index,
+            sectionTitle: section.title,
+            error: error.message
+          };
+        }
+      });
+
+      // Wait for all requests to complete
+      const results = await Promise.all(templatePromises);
+      
+      console.log('All 5 template search requests completed:', results);
+      
+      // Show template selection after all requests are done
+      setShowTemplateSelection(true);
+      
+    } catch (error) {
+      console.error('Error during template search process:', error);
+      // Still show template selection even if there are errors
+      setShowTemplateSelection(true);
+    }
   };
 
   const handleCloseTemplateSelection = () => {
