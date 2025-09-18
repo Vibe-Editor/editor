@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../../hooks/useAuthStore";
 import { assets } from "../../assets/assets";
 import { useProjectStore } from "../../store/useProjectStore";
+import { useTimeline } from "../../hooks/useTimeline";
+import { CLOUDFRONT_URL } from "../../config/baseurl";
 
 const STATUS_MESSAGES = [
   "Analyzing your story arc...",
@@ -19,15 +21,97 @@ const TOTAL_DURATION_MS = 15000; // 15 seconds
 const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) => {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isCompleteInternal, setIsCompleteInternal] = useState(false);
+  const [addingToTimeline, setAddingToTimeline] = useState(false);
 
   // Get user data for avatar
   const { user } = useAuthStore();
   const templateSelections = useProjectStore((s) => s.templateSelections);
   const preferenceVideos = useProjectStore((s) => s.preferenceVideos || []);
+  const generatedVideoResults = useProjectStore((s) => s.generatedVideoResults || []);
+  
+  // Timeline hook
+  const timeline = useTimeline();
 
   const handleClose = () => {
     if (onCancel) {
       onCancel();
+    }
+  };
+
+  const handleAddToTimeline = async () => {
+    if (addingToTimeline) return;
+    
+    setAddingToTimeline(true);
+    console.log('🎬 Adding generated videos to timeline from Loading component');
+    console.log('🎬 Generated video results:', generatedVideoResults);
+    
+    try {
+      // Build videos map from generated results (in section order 0-4)
+      const videosMap = {};
+      
+      // Filter successful results and sort by sectionIndex
+      const successfulResults = generatedVideoResults
+        .filter(result => result.result && !result.error)
+        .sort((a, b) => a.sectionIndex - b.sectionIndex);
+      
+      console.log('🎬 Successful results sorted by section:', successfulResults);
+      
+      successfulResults.forEach((result, index) => {
+        const s3Key = result.result?.s3Key;
+        if (s3Key) {
+          // Create full CloudFront URL
+          const videoUrl = s3Key.startsWith('http') ? s3Key : `${CLOUDFRONT_URL}/${s3Key}`;
+          const key = `section-${result.sectionIndex}`;
+          videosMap[key] = videoUrl;
+          console.log(`✅ Added video ${index + 1}: ${key} -> ${videoUrl}`);
+        }
+      });
+
+      console.log('🎬 Final videos map for timeline:', videosMap);
+
+      if (Object.keys(videosMap).length === 0) {
+        console.error('❌ No generated videos to add to timeline');
+        setAddingToTimeline(false);
+        return;
+      }
+
+      // Use the timeline hook to add videos
+      const success = await timeline.sendVideosToTimeline(
+        null, // selectedScript - not needed for this case
+        videosMap,
+        (error) => console.error('Timeline error:', error)
+      );
+
+      if (success) {
+        console.log('✅ Successfully added generated videos to timeline');
+        
+        // Close the chat interface and show the main editor
+        setTimeout(() => {
+          // Close chat interface
+          window.dispatchEvent(new CustomEvent("chatInterface:close"));
+          
+          if (typeof window.hideChatInterface === "function") {
+            window.hideChatInterface();
+          } else {
+            // Fallback: hide the overlay directly
+            const overlay = document.querySelector("react-chat-interface");
+            if (overlay) {
+              overlay.style.display = "none";
+            }
+          }
+          
+          // Open the main editor/timeline view
+          window.dispatchEvent(new CustomEvent("flowWidget:open"));
+          
+        }, 1000); // Small delay to show success state
+        
+      } else {
+        console.error('❌ Failed to add videos to timeline');
+      }
+    } catch (error) {
+      console.error('❌ Error adding videos to timeline:', error);
+    } finally {
+      setAddingToTimeline(false);
     }
   };
 
@@ -322,10 +406,37 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
                 </p>
                 <div className='flex items-center gap-3'>
                   <button
-                    className='px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors'
-                    onClick={onDone}
+                    className={`px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                      addingToTimeline ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    onClick={addingToTimeline ? undefined : handleAddToTimeline}
+                    disabled={addingToTimeline}
                   >
-                    Add to timeline
+                    {addingToTimeline ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                        Adding to timeline...
+                      </>
+                    ) : (
+                      <>
+                        <svg 
+                          width="20" 
+                          height="20" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path 
+                            d="M11.9996 15V12M11.9996 12V9M11.9996 12H8.99963M11.9996 12H14.9996M21.1496 12.0001C21.1496 17.0535 17.053 21.1501 11.9996 21.1501C6.9462 21.1501 2.84961 17.0535 2.84961 12.0001C2.84961 6.94669 6.9462 2.8501 11.9996 2.8501C17.053 2.8501 21.1496 6.94669 21.1496 12.0001Z" 
+                            stroke="currentColor" 
+                            strokeWidth="1.5" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        Add to timeline
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

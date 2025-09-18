@@ -38,6 +38,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
   const setTemplateSelection = useProjectStore((s) => s.setTemplateSelection);
   const getTemplateSelection = useProjectStore((s) => s.getTemplateSelection);
   const selectedProject = useProjectStore((s) => s.selectedProject);
+  const setGeneratedVideoResults = useProjectStore((s) => s.setGeneratedVideoResults);
 
   // On step change, restore previously selected template (if any) for that step
   React.useEffect(() => {
@@ -222,6 +223,10 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
       
       console.log('All 5 video generation requests completed:', results);
       setGenerationResults(results);
+      
+      // Store results in global store for timeline integration
+      setGeneratedVideoResults(results);
+      console.log('📦 Stored generation results in global store for timeline');
       
       // Signal Loading component to show completion UI
       setIsGenerationComplete(true);

@@ -43,6 +43,9 @@ const storeImpl = (set, get) => ({
   
   // Preserve user preference videos for Loading component (before preferenceAnswers gets cleared)
   preferenceVideos: [],
+  
+  // Store generated video results from TemplateSelection for timeline integration
+  generatedVideoResults: [],
   loadingData: {
     conversations: false,
     concepts: false,
@@ -284,6 +287,10 @@ const storeImpl = (set, get) => ({
   // Preference videos actions (to preserve videos before preferenceAnswers gets cleared)
   setPreferenceVideos: (videos) => set({ preferenceVideos: videos }),
   clearPreferenceVideos: () => set({ preferenceVideos: [] }),
+
+  // Generated video results actions (for timeline integration)
+  setGeneratedVideoResults: (results) => set({ generatedVideoResults: results }),
+  clearGeneratedVideoResults: () => set({ generatedVideoResults: [] }),
 
   // Clear project editor after successful API call
   clearProjectEditorAfterSave: () => {
