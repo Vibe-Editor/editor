@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { assets } from '../../assets/assets';
 import Loading from './Loading';
 import { useProjectStore } from '../../store/useProjectStore';
+import { promptOptimizerService } from '../../services/promptOptimizer';
 
-const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates, onClose, onTemplateSelect }) => {
+const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates, segmentIds, videoPreferences, onClose, onTemplateSelect }) => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [expandedSections, setExpandedSections] = useState({ 0: true });
   const [currentStep, setCurrentStep] = useState(0);
@@ -12,6 +13,9 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
   const [view, setView] = useState('grid'); // 'grid' | 'loading'
   const [fullLoading, setFullLoading] = useState(false); // fullscreen loading overlay
   const [showReadyToGenerate, setShowReadyToGenerate] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationResults, setGenerationResults] = useState([]);
+  const [showAddToTimeline, setShowAddToTimeline] = useState(false);
 
   // Get templates for current step (limit to 4 fresh choices)
   const currentTemplates = (templateResponses[currentStep] || []).slice(0, 4);
@@ -19,6 +23,9 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
   // Read/write selection to global store (per section)
   const setTemplateSelection = useProjectStore((s) => s.setTemplateSelection);
   const getTemplateSelection = useProjectStore((s) => s.getTemplateSelection);
+  const preferenceAnswers = useProjectStore((s) => s.projectEditor.preferenceAnswers);
+  const selectedProject = useProjectStore((s) => s.selectedProject);
+  const projectEditor = useProjectStore((s) => s.projectEditor);
 
   // On step change, restore previously selected template (if any) for that step
   React.useEffect(() => {
@@ -86,15 +93,43 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
 
   // Fullscreen Loading overlay when all selections are done
   if (fullLoading) {
+    if (showAddToTimeline) {
+      return (
+        <div className="w-full h-screen bg-black flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-6 mx-auto">
+              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h3 className="text-white text-2xl font-semibold">Videos Generated Successfully!</h3>
+            <p className="text-gray-400 mb-6">All 5 videos have been generated and are ready to be added to your timeline.</p>
+            <button
+              onClick={() => {
+                console.log('Adding videos to timeline:', generationResults);
+                window.dispatchEvent(new CustomEvent('timeline:add', { detail: { results: generationResults } }));
+                // You can add timeline logic here or close the component
+                if (onClose) onClose();
+              }}
+              className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+            >
+              Add to Timeline
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="w-full h-screen bg-black overflow-hidden">
-        <div
-          className={`w-full h-full transform-gpu transition-transform duration-500 ease-in-out ${
-            animationPhase === 'in' ? 'translate-x-full' : 'translate-x-0'
-          }`}
-          style={{ willChange: 'transform' }}
-        >
-          <Loading onDone={() => { setShowLoading(false); }} />
+      <div className="w-full h-screen bg-black flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <h3 className="text-white text-xl font-semibold">
+            {isGenerating ? 'Generating Videos...' : 'Loading...'}
+          </h3>
+          <p className="text-gray-400">
+            {isGenerating ? 'Please wait while we generate your videos. This may take a few moments.' : 'Please wait...'}
+          </p>
         </div>
       </div>
     );
@@ -121,10 +156,101 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
     // No back button functionality on step 0 - user must proceed through template selection
   };
 
-  const handleReadyGenerate = () => {
+  const handleReadyGenerate = async () => {
+    console.log('Starting video generation for all 5 segments...');
+    setIsGenerating(true);
     setFullLoading(true);
     setAnimationPhase('in');
     setTimeout(() => setAnimationPhase('idle'), 20);
+
+    try {
+      // Debug the video preferences structure
+      console.log('🔍 Raw video preferences prop:', videoPreferences);
+      console.log('🔍 Video preferences type:', typeof videoPreferences);
+      console.log('🔍 Video preferences keys:', videoPreferences ? Object.keys(videoPreferences) : 'null/undefined');
+      
+      // Check if it's nested under 'data'
+      const actualPreferences = videoPreferences?.data || videoPreferences;
+      console.log('🔍 Actual preferences:', actualPreferences);
+      console.log('🔍 Final config exists?:', !!actualPreferences?.finalConfig);
+      console.log('🔍 Final config value:', actualPreferences?.finalConfig);
+
+      // Use finalConfig from video preferences as user preferences
+      const finalConfigString = actualPreferences?.finalConfig 
+        ? JSON.stringify(actualPreferences.finalConfig)
+        : 'no_preferences_set';
+
+      console.log('✅ Final config string:', finalConfigString);
+      console.log('✅ Project ID:', selectedProject?.id);
+      console.log('✅ Story sections:', storyArcData?.sections);
+
+      // Create 5 parallel requests for video generation
+      const generationPromises = Array.from({ length: 5 }, async (_, index) => {
+        const selectedTemplate = getTemplateSelection(index);
+        const segmentId = segmentIds[index];
+
+        if (!selectedTemplate || !segmentId) {
+          console.error(`Missing data for segment ${index}:`, { selectedTemplate, segmentId });
+          return {
+            sectionIndex: index,
+            error: 'Missing template or segment ID'
+          };
+        }
+
+        // Get the story segment content for this section
+        const storySegmentContent = storyArcData?.sections?.[index]?.content || '';
+        
+        console.log(`Making video generation request ${index + 1}/5 for segment: ${segmentId}`);
+        console.log(`Story segment content: ${storySegmentContent}`);
+        
+        const requestPayload = {
+          jsonPrompt: selectedTemplate.jsonPrompt,
+          description: storySegmentContent, // Use story segment content instead of template description
+          userPreferences: finalConfigString, // This should now contain the finalConfig JSON
+          segmentId: segmentId,
+          projectId: selectedProject?.id
+        };
+        
+        console.log(`🚀 API Request payload for segment ${index + 1}:`, requestPayload);
+
+        try {
+          const result = await promptOptimizerService.optimizeAndGenerate(requestPayload);
+
+          console.log(`✅ Video generation request ${index + 1}/5 completed successfully:`, {
+            sectionIndex: index,
+            segmentId: segmentId,
+            result: result
+          });
+
+          return {
+            sectionIndex: index,
+            segmentId: segmentId,
+            result: result
+          };
+        } catch (error) {
+          console.error(`❌ Video generation request ${index + 1}/5 failed for segment ${segmentId}:`, error);
+          return {
+            sectionIndex: index,
+            segmentId: segmentId,
+            error: error.message
+          };
+        }
+      });
+
+      // Wait for all requests to complete
+      const results = await Promise.all(generationPromises);
+      
+      console.log('All 5 video generation requests completed:', results);
+      setGenerationResults(results);
+      
+      // Show add to timeline screen
+      setShowAddToTimeline(true);
+      
+    } catch (error) {
+      console.error('Error during video generation process:', error);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (

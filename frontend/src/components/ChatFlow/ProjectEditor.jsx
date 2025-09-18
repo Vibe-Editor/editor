@@ -24,6 +24,7 @@ const ProjectEditor = () => {
   const [storyArcIn, setStoryArcIn] = useState(false);
   const [storyData, setStoryData] = useState(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [videoPreferences, setVideoPreferences] = useState(null);
 
   useEffect(() => {
     if (selectedProject) {
@@ -130,7 +131,14 @@ const ProjectEditor = () => {
       console.log('Saving video preferences:', preferences);
       
       const result = await questionsApi.createVideoPreferences(selectedProject.id, preferences);
-      console.log('Video preferences saved successfully:', result);
+      console.log('📦 Video preferences saved successfully:', result);
+      console.log('📦 Result structure:', typeof result, Object.keys(result || {}));
+      console.log('📦 Result.data exists?:', !!result?.data);
+      console.log('📦 Result.data.finalConfig exists?:', !!result?.data?.finalConfig);
+      
+      // Store the video preferences response for later use
+      setVideoPreferences(result);
+      console.log('📦 Stored video preferences in state:', result);
       
       // Generate concept with preferences after successful save
       try {
@@ -196,7 +204,7 @@ const ProjectEditor = () => {
     return (
       <div className={`w-full h-screen bg-black overflow-hidden`}> 
         <div className={`w-full h-full transform transition-transform duration-500 ease-out ${storyArcIn ? 'translate-x-0' : 'translate-x-full'}`}>
-          <StoryArcEngine storyData={storyData} isLoading={isGeneratingStory} />
+          <StoryArcEngine storyData={storyData} videoPreferences={videoPreferences} isLoading={isGeneratingStory} />
         </div>
       </div>
     );

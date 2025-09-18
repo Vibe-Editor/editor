@@ -13,7 +13,7 @@ const sectionTitles = [
 ];
 
 
-const StoryArcEngine = ({ storyData, isLoading = false }) => {
+const StoryArcEngine = ({ storyData, videoPreferences, isLoading = false }) => {
   const [wordCount, setWordCount] = useState(150);
   const [editingIndex, setEditingIndex] = useState(null);
   const [showTemplateSelection, setShowTemplateSelection] = useState(false);
@@ -266,6 +266,8 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
         }}
         templateResponses={templateResponses}
         selectedTemplates={selectedTemplates}
+        segmentIds={segmentIds}
+        videoPreferences={videoPreferences}
         onClose={handleCloseTemplateSelection}
         onTemplateSelect={handleTemplateSelect}
       />
