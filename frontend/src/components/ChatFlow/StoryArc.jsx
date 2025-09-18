@@ -22,6 +22,8 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
   const [segmentIds, setSegmentIds] = useState([]);
   const [savingIndex, setSavingIndex] = useState(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [templateResponses, setTemplateResponses] = useState([]); // Store template responses for each section
+  const [selectedTemplates, setSelectedTemplates] = useState([]); // Store selected template for each section
   const draftRef = useRef([]);
   const minWordCount = 100;
   const maxWordCount = 350;
@@ -200,7 +202,8 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
           return {
             sectionIndex: index,
             sectionTitle: section.title,
-            error: error.message
+            error: error.message,
+            result: { templates: [], totalCount: 0 }
           };
         }
       });
@@ -209,6 +212,17 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
       const results = await Promise.all(templatePromises);
       
       console.log('All 5 template search requests completed:', results);
+      
+      // Store template responses for each section
+      const templateResponsesArray = new Array(5).fill(null);
+      results.forEach((result) => {
+        if (result.result && result.result.templates) {
+          templateResponsesArray[result.sectionIndex] = result.result.templates;
+        }
+      });
+      
+      setTemplateResponses(templateResponsesArray);
+      setSelectedTemplates(new Array(5).fill(null)); // Initialize with no selections
       
       // Show template selection after all requests are done
       setShowTemplateSelection(true);
@@ -224,10 +238,22 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
     setShowTemplateSelection(false);
   };
 
-  const handleTemplateSelect = (template) => {
-    console.log('Selected template:', template);
-    // Handle template selection logic here
-    // You can add navigation or state management as needed
+  const handleTemplateSelect = (template, sectionIndex) => {
+    console.log(`Selected template for section ${sectionIndex}:`, template);
+    
+    // Update selected templates array
+    setSelectedTemplates(prev => {
+      const updated = [...prev];
+      updated[sectionIndex] = {
+        id: template.id,
+        description: template.description,
+        jsonPrompt: template.jsonPrompt,
+        s3Key: template.s3Key,
+        createdAt: template.createdAt,
+        updatedAt: template.updatedAt
+      };
+      return updated;
+    });
   };
 
   // Show TemplateSelection when proceed is clicked
@@ -238,6 +264,8 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
           sections,
           wordCount
         }}
+        templateResponses={templateResponses}
+        selectedTemplates={selectedTemplates}
         onClose={handleCloseTemplateSelection}
         onTemplateSelect={handleTemplateSelect}
       />

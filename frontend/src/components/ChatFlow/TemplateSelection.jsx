@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { assets } from '../../assets/assets';
 import Loading from './Loading';
+import { useProjectStore } from '../../store/useProjectStore';
 
-const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
+const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates, onClose, onTemplateSelect }) => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [expandedSections, setExpandedSections] = useState({ 0: true });
   const [currentStep, setCurrentStep] = useState(0);
@@ -12,35 +13,34 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
   const [fullLoading, setFullLoading] = useState(false); // fullscreen loading overlay
   const [showReadyToGenerate, setShowReadyToGenerate] = useState(false);
 
-  // Mock template data - replace with actual template data
-  const templates = [
-    {
-      id: 'template_1',
-      thumbnail: '/api/placeholder/300/200',
-      description: 'Clean, corporate-style template perfect for business presentations',
-    },
-    {
-      id: 'template_2', 
-      thumbnail: '/api/placeholder/300/200',
-      description: 'Dynamic template with creative transitions and effects',
-    },
-    {
-      id: 'template_3',
-      thumbnail: '/api/placeholder/300/200',
-      description: 'Structured template ideal for tutorials and educational videos',
-    },
-    {
-      id: 'template_4',
-      thumbnail: '/api/placeholder/300/200',
-      description: 'Optimized for social platforms with engaging visuals',
-    }
-  ];
+  // Get templates for current step (limit to 4 fresh choices)
+  const currentTemplates = (templateResponses[currentStep] || []).slice(0, 4);
+
+  // Read/write selection to global store (per section)
+  const setTemplateSelection = useProjectStore((s) => s.setTemplateSelection);
+  const getTemplateSelection = useProjectStore((s) => s.getTemplateSelection);
+
+  // On step change, restore previously selected template (if any) for that step
+  React.useEffect(() => {
+    const previouslySelected = getTemplateSelection(currentStep);
+    setSelectedTemplate(previouslySelected || null);
+  }, [currentStep, getTemplateSelection]);
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
     if (onTemplateSelect) {
-      onTemplateSelect(template);
+      onTemplateSelect(template, currentStep);
     }
+
+    // Persist selection per section in global store
+    setTemplateSelection(currentStep, {
+      id: template.id,
+      description: template.description,
+      jsonPrompt: template.jsonPrompt,
+      s3Key: template.s3Key,
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+    });
 
     const totalSections = storyArcData?.sections?.length || 1;
     const isLast = currentStep >= totalSections - 1;
@@ -226,8 +226,9 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
                 >
                   {/* Template Grid (match VideoGrid sizing) */}
                   <div className="max-w-4xl mx-auto">
-                    <div className="grid grid-cols-2 gap-4">
-                    {templates.map((template) => (
+                    {currentTemplates.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-4">
+                      {currentTemplates.map((template) => (
                       <div
                         key={template.id}
                         onClick={() => handleTemplateSelect(template)}
@@ -238,17 +239,18 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
                         }`}
                       >
                         <div className="relative aspect-video bg-gray-900">
-                          {/* Template Thumbnail Placeholder */}
-                          <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                            <div className="text-center">
-                              <div className="w-16 h-16 bg-yellow-400/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                                <svg className="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                              <p className="text-gray-400 text-sm">Template Preview</p>
-                            </div>
-                          </div>
+                          {/* Video Preview */}
+                          <video
+                            className="w-full h-full object-cover"
+                            muted
+                            loop
+                            playsInline
+                            onMouseEnter={(e) => e.target.play()}
+                            onMouseLeave={(e) => e.target.pause()}
+                          >
+                            <source src={template.s3Key} type="video/mp4" />
+                            Your browser does not support the video tag.
+                          </video>
                           
                           {/* Selection Overlay */}
                           {selectedTemplate?.id === template.id && (
@@ -261,15 +263,27 @@ const TemplateSelection = ({ storyArcData, onClose, onTemplateSelect }) => {
                             </div>
                           )}
                         </div>
-                        {/* Description only */}
+                        {/* Description */}
                         {template.description && (
                           <div className="p-4 bg-gray-900/80">
                             <p className="text-gray-400 text-sm">{template.description}</p>
                           </div>
                         )}
                       </div>
-                    ))}
-                    </div>
+                      ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-64">
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                            <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-sm">No templates available for this section</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

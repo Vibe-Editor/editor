@@ -37,6 +37,9 @@ const storeImpl = (set, get) => ({
     preferenceAnswers: {},
     chatMessages: [],
   },
+
+  // Template selections per story section (0..4)
+  templateSelections: {},
   loadingData: {
     conversations: false,
     concepts: false,
@@ -259,6 +262,21 @@ const storeImpl = (set, get) => ({
       }
     }));
   },
+
+  // Template selection actions
+  setTemplateSelection: (sectionIndex, template) => {
+    set((state) => ({
+      templateSelections: {
+        ...state.templateSelections,
+        [sectionIndex]: template,
+      },
+    }));
+  },
+  getTemplateSelection: (sectionIndex) => {
+    const { templateSelections } = get();
+    return templateSelections?.[sectionIndex] || null;
+  },
+  clearTemplateSelections: () => set({ templateSelections: {} }),
 
   // Clear project editor after successful API call
   clearProjectEditorAfterSave: () => {
