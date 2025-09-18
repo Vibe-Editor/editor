@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import TemplateSelection from "./TemplateSelection";
 import { storyEngineApi } from "../../services/storyEngine";
+import { templateService } from "../../services/template";
 
 // Section titles are always the same
 const sectionTitles = [
@@ -20,9 +21,11 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
   const [sections, setSections] = useState([]);
   const [segmentIds, setSegmentIds] = useState([]);
   const [savingIndex, setSavingIndex] = useState(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const draftRef = useRef([]);
   const minWordCount = 100;
   const maxWordCount = 350;
+  const regenerateTimeoutRef = useRef(null);
 
   // Update sections when storyData changes
   React.useEffect(() => {
@@ -47,6 +50,15 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
     setSegmentIds(mappedSegmentIds);
     draftRef.current = mappedSections.map((s) => s.content);
   }, [storyData]);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (regenerateTimeoutRef.current) {
+        clearTimeout(regenerateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Skeleton loading component
   const SkeletonLoader = () => (
@@ -98,6 +110,54 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
     setEditingIndex(null);
   };
 
+  const handleWordCountChange = (newWordCount) => {
+    // Clear existing timeout
+    if (regenerateTimeoutRef.current) {
+      clearTimeout(regenerateTimeoutRef.current);
+    }
+
+    // Set new timeout for 2 seconds
+    regenerateTimeoutRef.current = setTimeout(async () => {
+      if (segmentIds.length > 0 && segmentIds.every(id => id !== null)) {
+        try {
+          setIsRegenerating(true);
+          const result = await storyEngineApi.regenerateSegments(segmentIds, newWordCount);
+          console.log('Segments regenerated successfully:', result);
+          
+          // Update sections with new data
+          console.log('Regenerate response:', result);
+          
+          // Check if result is an array directly or nested under data
+          const segments = Array.isArray(result) ? result : result.data || result;
+          
+          if (segments && segments.length > 0) {
+            const mappedSections = [];
+            const mappedSegmentIds = [];
+            
+            const orderedTypes = ['setTheScene', 'ruinThings', 'theBreakingPoint', 'cleanUpTheMess', 'wrapItUp'];
+            
+            orderedTypes.forEach((type, index) => {
+              const segment = segments.find(s => s.type === type);
+              mappedSections.push({
+                title: sectionTitles[index],
+                content: segment?.description || ''
+              });
+              mappedSegmentIds.push(segment?.id || null);
+            });
+            
+            setSections(mappedSections);
+            setSegmentIds(mappedSegmentIds);
+            draftRef.current = mappedSections.map((s) => s.content);
+          }
+        } catch (error) {
+          console.error('Failed to regenerate segments:', error);
+        } finally {
+          setIsRegenerating(false);
+        }
+      }
+    }, 1000);
+  };
+
   const handleEditableKeyDown = (e, index) => {
     if (editingIndex !== index) return;
     const isMeta = e.metaKey || e.ctrlKey;
@@ -113,8 +173,51 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
     // Let native copy/cut/paste (C/X/V) work by default
   };
 
-  const handleProceed = () => {
-    setShowTemplateSelection(true);
+  const handleProceed = async () => {
+    console.log('Starting template search for all 5 story segments...');
+    
+    try {
+      // Make 5 parallel requests to find similar templates for each section
+      const templatePromises = sections.map(async (section, index) => {
+        console.log(`Making API request ${index + 1}/5 for section: ${section.title}`);
+        console.log(`Description: ${section.content}`);
+        
+        try {
+          const result = await templateService.findSimilarTemplates(section.content);
+          console.log(`✅ API request ${index + 1}/5 completed successfully:`, {
+            section: section.title,
+            templatesFound: result.templates?.length || 0,
+            totalCount: result.totalCount,
+            response: result
+          });
+          return {
+            sectionIndex: index,
+            sectionTitle: section.title,
+            result: result
+          };
+        } catch (error) {
+          console.error(`❌ API request ${index + 1}/5 failed for section ${section.title}:`, error);
+          return {
+            sectionIndex: index,
+            sectionTitle: section.title,
+            error: error.message
+          };
+        }
+      });
+
+      // Wait for all requests to complete
+      const results = await Promise.all(templatePromises);
+      
+      console.log('All 5 template search requests completed:', results);
+      
+      // Show template selection after all requests are done
+      setShowTemplateSelection(true);
+      
+    } catch (error) {
+      console.error('Error during template search process:', error);
+      // Still show template selection even if there are errors
+      setShowTemplateSelection(true);
+    }
   };
 
   const handleCloseTemplateSelection = () => {
@@ -167,8 +270,13 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
               type='range'
               min={minWordCount}
               max={maxWordCount}
+              step={10}
               value={wordCount}
-              onChange={(e) => setWordCount(Number(e.target.value))}
+              onChange={(e) => {
+                const newValue = Math.round(Number(e.target.value) / 10) * 10;
+                setWordCount(newValue);
+                handleWordCountChange(newValue);
+              }}
               className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
               aria-label='Word count'
             />
@@ -179,7 +287,7 @@ const StoryArcEngine = ({ storyData, isLoading = false }) => {
 
       {/* Main Story Arc - 5 Column Layout with Connecting Lines */}
       <div className='relative flex items-end justify-center gap-0 mb-12'>
-        {sections.length === 0 && isLoading ? (
+        {(sections.length === 0 && isLoading) || isRegenerating ? (
           // Show skeleton loading for all 5 sections
           <>
             {[0, 1, 2, 3, 4].map((index) => {
