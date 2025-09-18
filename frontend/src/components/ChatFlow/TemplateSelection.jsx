@@ -4,16 +4,14 @@ import Loading from './Loading';
 import { useProjectStore } from '../../store/useProjectStore';
 import { promptOptimizerService } from '../../services/promptOptimizer';
 
-const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates, segmentIds, videoPreferences, onClose, onTemplateSelect }) => {
+const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoPreferences, onClose, onTemplateSelect }) => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [expandedSections, setExpandedSections] = useState({ 0: true });
   const [currentStep, setCurrentStep] = useState(0);
   // Removed old inline loading usage in favor of <Loading /> component
   const [animationPhase, setAnimationPhase] = useState('idle'); // 'idle' | 'out' | 'in'
-  const [view, setView] = useState('grid'); // 'grid' | 'loading'
-  const [fullLoading, setFullLoading] = useState(false); // legacy (not used)
+  const [view] = useState('grid'); // 'grid' | 'loading'
   const [showReadyToGenerate, setShowReadyToGenerate] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [generationResults, setGenerationResults] = useState([]);
   // New: drive full-screen Loading component
   const [showFullLoading, setShowFullLoading] = useState(false);
@@ -31,9 +29,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
   // Read/write selection to global store (per section)
   const setTemplateSelection = useProjectStore((s) => s.setTemplateSelection);
   const getTemplateSelection = useProjectStore((s) => s.getTemplateSelection);
-  const preferenceAnswers = useProjectStore((s) => s.projectEditor.preferenceAnswers);
   const selectedProject = useProjectStore((s) => s.selectedProject);
-  const projectEditor = useProjectStore((s) => s.projectEditor);
 
   // On step change, restore previously selected template (if any) for that step
   React.useEffect(() => {
@@ -129,7 +125,6 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
 
   const handleReadyGenerate = async () => {
     console.log('Starting video generation for all 5 segments...');
-    setIsGenerating(true);
     setShowFullLoading(true);
     setAnimationPhase('in');
     setTimeout(() => setAnimationPhase('idle'), 20);
@@ -225,20 +220,18 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
       
     } catch (error) {
       console.error('Error during video generation process:', error);
-    } finally {
-      setIsGenerating(false);
     }
   };
 
   return (
-    <div className="w-full h-screen bg-black flex relative">
+    <div className="w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex relative">
       {/* Left Panel - Story Arc Content */}
-      <div className="w-1/3 bg-gray-900 flex flex-col border-r border-gray-700">
+      <div className="w-1/3 bg-white/5 backdrop-blur-sm flex flex-col border-r border-white/10">
         {/* Header */}
-        <div className="p-4 border-b border-gray-700 flex items-center justify-between relative">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between relative">
           <div className="flex items-center gap-3">
             <img src={assets.SandBoxLogo} alt="Usuals.ai" className="w-6 h-6" />
-            <h1 className="text-white text-lg font-semibold">Story Arc</h1>
+            <h1 className="text-white text-lg font-semibold">Template Selection</h1>
           </div>
         </div>
 
@@ -248,13 +241,13 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
             if (index > currentStep) return null;
             const isExpanded = expandedSections[index];
             return (
-              <div key={index} className="border border-gray-700 rounded-lg">
+              <div key={index} className="border border-white/10 rounded-lg bg-white/5 backdrop-blur-[2px]">
                 <div 
-                  className="p-3 cursor-pointer hover:bg-gray-800/50 transition-colors"
+                  className="p-3 cursor-pointer hover:bg-white/10 transition-colors"
                   onClick={() => toggleSection(index)}
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-yellow-400 font-bold text-xs tracking-wider">
+                    <h3 className="text-[#F9D312] font-bold text-xs tracking-wider">
                       {section.title}
                     </h3>
                     <svg 
@@ -270,8 +263,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
                   </div>
                 </div>
                 {isExpanded && (
-                  <div className="px-3 pb-3 border-t border-gray-700">
-                    <p className="text-gray-300 text-xs leading-relaxed pt-3">
+                  <div className="px-3 pb-3 border-t border-white/10">
+                    <p className="text-white/80 text-xs leading-relaxed pt-3">
                       {section.content}
                     </p>
                   </div>
@@ -297,7 +290,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
             aria-label="Go back"
             title="Back"
           >
-            <div className="w-10 h-10 rounded-full bg-gray-800/80 border border-gray-700 flex items-center justify-center hover:bg-gray-700/80 transition-colors">
+            <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -337,11 +330,11 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
                         onClick={() => handleTemplateSelect(template)}
                         className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 ${
                           selectedTemplate?.id === template.id
-                            ? 'border-yellow-400 shadow-lg shadow-yellow-400/20'
-                            : 'border-white/20 hover:border-white/40'
+                            ? 'border-[#F9D312] shadow-lg shadow-yellow-400/20'
+                            : 'border-white/10 hover:border-white/30'
                         }`}
                       >
-                        <div className="relative aspect-video bg-gray-900">
+                        <div className="relative aspect-video bg-gradient-to-br from-amber-50/20 to-orange-100/20">
                           {/* Video Preview */}
                           <video
                             className="w-full h-full object-cover"
@@ -357,8 +350,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
                           
                           {/* Selection Overlay */}
                           {selectedTemplate?.id === template.id && (
-                            <div className="absolute inset-0 bg-yellow-400/10 flex items-center justify-center">
-                              <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center">
+                            <div className="absolute inset-0 bg-[#F9D312]/10 flex items-center justify-center">
+                              <div className="w-12 h-12 bg-[#F9D312] rounded-full flex items-center justify-center">
                                 <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
@@ -368,8 +361,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
                         </div>
                         {/* Description */}
                         {template.description && (
-                          <div className="p-4 bg-gray-900/80">
-                            <p className="text-gray-400 text-sm">{template.description}</p>
+                          <div className="p-4 bg-white/5 backdrop-blur-sm border-t border-white/10">
+                            <p className="text-white/80 text-sm">{template.description}</p>
                           </div>
                         )}
                       </div>
@@ -378,12 +371,12 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
                     ) : (
                       <div className="flex items-center justify-center h-64">
                         <div className="text-center">
-                          <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                            <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center mb-4 mx-auto border border-white/20">
+                            <svg className="w-8 h-8 text-white/60" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                             </svg>
                           </div>
-                          <p className="text-gray-400 text-sm">No templates available for this section</p>
+                          <p className="text-white/70 text-sm">No templates available for this section</p>
                         </div>
                       </div>
                     )}
@@ -404,7 +397,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
                     <p className="text-gray-400">All selections are complete. Proceed when you are ready.</p>
                     <button
                       onClick={handleReadyGenerate}
-                      className="px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors"
+                      className="px-6 py-3 bg-[#F9D312] hover:bg-[#F9D312] text-black rounded-lg font-medium transition-colors"
                     >
                       Ready to generate videos
                     </button>
@@ -423,8 +416,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
           {/* Center loader */}
           <div className="relative z-10 flex flex-col items-center">
-            <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-4 text-gray-200 text-sm" aria-live="polite">Loading templates...</p>
+            <div className="w-16 h-16 border-4 border-[#F9D312] border-t-transparent rounded-full animate-spin"></div>
+            <p className="mt-4 text-white/80 text-sm" aria-live="polite">Loading templates...</p>
           </div>
         </div>
       )}
