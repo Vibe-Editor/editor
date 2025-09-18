@@ -17,6 +17,14 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
   const [showFullLoading, setShowFullLoading] = useState(false);
   const [isGenerationComplete, setIsGenerationComplete] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
+  // Match VideoGrid UI: track loading state per template video
+  const [loadingStates, setLoadingStates] = useState({});
+  const handleVideoLoad = (templateId) => {
+    setLoadingStates((prev) => ({ ...prev, [templateId]: false }));
+  };
+  const handleVideoLoadStart = (templateId) => {
+    setLoadingStates((prev) => ({ ...prev, [templateId]: true }));
+  };
 
   // Determine if initial template loading is in progress (any section still null)
   const isInitialTemplateLoading = Array.isArray(templateResponses)
@@ -324,49 +332,92 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
                   <div className="max-w-4xl mx-auto">
                     {currentTemplates.length > 0 ? (
                       <div className="grid grid-cols-2 gap-4">
-                      {currentTemplates.map((template) => (
-                      <div
-                        key={template.id}
-                        onClick={() => handleTemplateSelect(template)}
-                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                          selectedTemplate?.id === template.id
-                            ? 'border-[#F9D312] shadow-lg shadow-yellow-400/20'
-                            : 'border-white/10 hover:border-white/30'
-                        }`}
-                      >
-                        <div className="relative aspect-video bg-gradient-to-br from-amber-50/20 to-orange-100/20">
-                          {/* Video Preview */}
-                          <video
-                            className="w-full h-full object-cover"
-                            muted
-                            loop
-                            playsInline
-                            onMouseEnter={(e) => e.target.play()}
-                            onMouseLeave={(e) => e.target.pause()}
+                        {currentTemplates.map((template) => (
+                          <div
+                            key={template.id}
+                            onClick={() => handleTemplateSelect(template)}
+                            className={`relative cursor-pointer`}
                           >
-                            <source src={template.s3Key} type="video/mp4" />
-                            Your browser does not support the video tag.
-                          </video>
-                          
-                          {/* Selection Overlay */}
-                          {selectedTemplate?.id === template.id && (
-                            <div className="absolute inset-0 bg-[#F9D312]/10 flex items-center justify-center">
-                              <div className="w-12 h-12 bg-[#F9D312] rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
+                            {/* Glass Card Container */}
+                            <div
+                              className={`relative overflow-hidden transition-all duration-300 ${
+                                selectedTemplate?.id === template.id ? 'shadow-amber-500/30' : ''
+                              }`}
+                              style={{
+                                borderRadius: '9.79px',
+                                aspectRatio: '301.33 / 230.39',
+                              }}
+                            >
+                              {/* Video Section - full card */}
+                              <div className="relative w-full h-full bg-gradient-to-br from-amber-50/20 to-orange-100/20">
+                                {loadingStates[template.id] && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-white/10 backdrop-blur-sm">
+                                    <div className="w-8 h-8 border-2 border-white/30 border-t-amber-400 rounded-full animate-spin"></div>
+                                  </div>
+                                )}
+
+                                <video
+                                  className="w-full h-full object-cover"
+                                  src={template.s3Key}
+                                  muted
+                                  loop
+                                  playsInline
+                                  onLoadStart={() => handleVideoLoadStart(template.id)}
+                                  onLoadedData={() => handleVideoLoad(template.id)}
+                                  onMouseEnter={(e) => e.target.play()}
+                                  onMouseLeave={(e) => e.target.pause()}
+                                />
+
+                                {/* Text overlay with gradient background */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#424243] to-[#42424360] backdrop-blur-sm px-4 py-3">
+                                  <h3 className="text-white font-medium text-base mb-1 leading-tight drop-shadow-sm">
+                                    {template.label || template.description}
+                                  </h3>
+                                  {template.description && (
+                                    <p className="text-white/80 text-xs leading-relaxed drop-shadow-sm line-clamp-2">
+                                      {template.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Selection Indicator */}
+                                {selectedTemplate?.id === template.id && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-amber-400/10 backdrop-blur-none">
+                                    <div className="w-16 h-16 bg-amber-400 rounded-full flex items-center justify-center shadow-xl animate-pulse">
+                                      <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Compact Text Section */}
+                              <div className="px-6 py-4 bg-white/5 backdrop-blur-sm border-t border-white/10">
+                                <h3 className="text-white font-medium text-base mb-1 leading-tight drop-shadow-sm">
+                                  {template.label || template.description}
+                                </h3>
+                                {template.description && (
+                                  <p className="text-white/80 text-xs leading-relaxed drop-shadow-sm line-clamp-2">
+                                    {template.description}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                          )}
-                        </div>
-                        {/* Description */}
-                        {template.description && (
-                          <div className="p-4 bg-white/5 backdrop-blur-sm border-t border-white/10">
-                            <p className="text-white/80 text-sm">{template.description}</p>
+
+                            {/* Outer glow effect */}
+                            <div
+                              className={`absolute -inset-1 blur-xl transition-opacity duration-300 -z-10 ${
+                                selectedTemplate?.id === template.id
+                                  ? 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 opacity-100'
+                                  : 'bg-gradient-to-r from-white/10 to-white/5 opacity-0 group-hover:opacity-50'
+                              }`}
+                              style={{
+                                borderRadius: '9.79px',
+                              }}
+                            ></div>
                           </div>
-                        )}
-                      </div>
-                      ))}
+                        ))}
                       </div>
                     ) : (
                       <div className="flex items-center justify-center h-64">
