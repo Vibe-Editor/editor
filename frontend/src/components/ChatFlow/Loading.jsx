@@ -85,25 +85,35 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
       if (success) {
         console.log('✅ Successfully added generated videos to timeline');
         
-        // Trigger chat widget open and close animation
+        // Quick open/close operations before landing in editor
         setTimeout(() => {
-          // Open chat widget first
+          // Open chat widget
           if (typeof window.openChat === "function") {
             console.log('📂 Opening chat widget...');
             window.openChat();
-            
-            // Close chat widget after a short delay to show the animation
-            setTimeout(() => {
-              if (typeof window.closeChat === "function") {
-                console.log('📂 Closing chat widget...');
-                window.closeChat();
-              }
-            }, 1500); // 1.5 second delay to show the open/close animation
-          } else {
-            console.warn('Chat widget functions not available');
           }
           
-          // Close the chat interface and stay in timeline editor
+          // Close chat widget quickly
+          setTimeout(() => {
+            if (typeof window.closeChat === "function") {
+              console.log('📂 Closing chat widget...');
+              window.closeChat();
+            }
+          }, 200); // Very quick close
+          
+          // Open sandbox
+          setTimeout(() => {
+            console.log('🎬 Opening sandbox...');
+            window.dispatchEvent(new CustomEvent("flowWidget:open"));
+          }, 300);
+          
+          // Close sandbox quickly
+          setTimeout(() => {
+            console.log('🎬 Closing sandbox...');
+            window.dispatchEvent(new CustomEvent("flowWidget:close"));
+          }, 500);
+          
+          // Close chat interface and land in editor
           setTimeout(() => {
             // Close chat interface
             window.dispatchEvent(new CustomEvent("chatInterface:close"));
@@ -118,10 +128,9 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
               }
             }
             
-            // Stay in timeline editor - no need to open sandbox/FlowWidget
-            // Videos are already added to timeline, user can see them in the editor
+            console.log('✅ Landed in timeline editor with videos');
             
-          }, 2000); // Delay to allow chat widget animation to complete
+          }, 700); // Quick transition to editor
           
         }, 1000); // Small delay to show success state
         
