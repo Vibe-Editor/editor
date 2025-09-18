@@ -12,6 +12,15 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('🚨 React Error Boundary caught an error:', error, errorInfo);
+    
+    // Handle React 19 specific errors
+    if (error.message && error.message.includes('__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE')) {
+      console.error('🚨 React 19 internal error - likely due to multiple React instances');
+      // Try to reload the page to fix React instance conflicts
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    }
   }
 
   render() {
