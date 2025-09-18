@@ -136,8 +136,8 @@ const VideoGrid = ({
                   onLoadedData={() => handleVideoLoad(option.id)}
                 />
 
-                {/* Text overlay with transparent background */}
-                <div className='absolute bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm px-4 py-3'>
+                {/* Text overlay with gradient background */}
+                <div className='absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#424243] to-[#42424360] backdrop-blur-sm px-4 py-3'>
                   <h3
                     className={`text-white font-medium ${
                       compact ? "text-sm" : "text-base"
@@ -145,7 +145,7 @@ const VideoGrid = ({
                   >
                     {option.label || option.description}
                   </h3>
-                  <p className='text-white/90 text-xs leading-relaxed drop-shadow-sm line-clamp-2'>
+                  <p className='text-white/80 text-xs leading-relaxed drop-shadow-sm line-clamp-2'>
                     {option.description}
                   </p>
                 </div>

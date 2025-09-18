@@ -398,32 +398,45 @@ const ProjectEditor = () => {
         </div>
       </div>
 
-       {/* Progress Loader (visible during preference questions) */}
-       {!showStoryArc && projectEditor.currentStep === "preference_questions" && projectEditor.questionsData && (
-         <div className='absolute bottom-[7.5rem] left-0 right-0 px-4 z-10'>
-           <div className='w-full max-w-[54rem] mx-auto'>
-             <div className={`w-full h-1 rounded-full overflow-hidden ${
-               Object.keys(projectEditor.preferenceAnswers || {}).length > 0 
-                 ? 'bg-[#f9d21229]' 
-                 : 'bg-gray-700'
-             }`}>
-               <div 
-                 className='h-full bg-yellow-400 transition-all duration-500 ease-out'
-                 style={{ 
-                   width: `${(Object.keys(projectEditor.preferenceAnswers || {}).length / Object.keys(projectEditor.questionsData?.preference_questions || {}).length) * 100}%` 
-                 }}
-               />
-             </div>
-           </div>
-         </div>
-       )}
+      {/* Progress Loader (visible during preference questions) */}
+      {!showStoryArc &&
+        projectEditor.currentStep === "preference_questions" &&
+        projectEditor.questionsData && (
+          <div className='absolute bottom-[7.5rem] left-0 right-0 px-4 z-10'>
+            <div className='w-full max-w-[54rem] mx-auto'>
+              <div
+                className={`w-full h-1 rounded-full overflow-hidden ${
+                  Object.keys(projectEditor.preferenceAnswers || {}).length > 0
+                    ? "bg-[#f9d21229]"
+                    : "bg-gray-700"
+                }`}
+              >
+                <div
+                  className='h-full bg-yellow-400 transition-all duration-500 ease-out'
+                  style={{
+                    width: `${
+                      (Object.keys(projectEditor.preferenceAnswers || {})
+                        .length /
+                        Object.keys(
+                          projectEditor.questionsData?.preference_questions ||
+                            {},
+                        ).length) *
+                      100
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Bottom Centered Input (visible throughout the flow until Generate Script) */}
       {!showStoryArc && (
         <div className='w-full px-4 py-6 pb-6 flex items-center justify-center'>
           <div className='w-full max-w-4xl'>
-            <div className='bg-gradient-to-t from-[#20272B] to-[#000000] rounded-2xl border-1 border-white/30 p-6'>
-              <div className='flex items-center gap-4'>
+            <div className='bg-gradient-to-t from-[#20272B]/50 to-[#000000]/30 rounded-2xl border-1 border-white/20 p-6 backdrop-blur-sm opacity-90'>
+              {/* Input Row */}
+              <div className='flex items-center gap-4 mb-4'>
                 <input
                   type='text'
                   value={inputValue}
@@ -443,46 +456,158 @@ const ProjectEditor = () => {
                       : ""
                   }`}
                 />
-                <div
-                  onClick={
-                    projectEditor.currentStep === "user_prompt"
-                      ? handlePromptSubmit
-                      : undefined
-                  }
-                  disabled={
-                    !inputValue.trim() ||
-                    projectEditor.currentStep !== "user_prompt"
-                  }
-                  className={`text-white p-2 rounded-lg transition-colors flex items-center justify-center flex-shrink-0 ${
-                    projectEditor.currentStep === "user_prompt"
-                      ? "cursor-pointer"
-                      : "opacity-50 cursor-not-allowed"
-                  }`}
-                >
-                  <svg
-                    width='32'
-                    height='33'
-                    viewBox='0 0 28 29'
-                    fill='none'
-                    xmlns='http://www.w3.org/2000/svg'
+              </div>
+
+              {/* Options Row */}
+              <div className='flex items-center justify-between'>
+                {/* Left - Dropdown */}
+                <div className='flex items-center relative'>
+                  <select className='bg-white/5 text-[#94E7ED] rounded-lg px-3 py-2 pr-8 focus:outline-none appearance-none cursor-pointer'>
+                    <option value='' className='bg-gray-800 text-white'>
+                      Model Config
+                    </option>
+                    <option value='option1' className='bg-gray-800 text-white'>
+                      Option 1
+                    </option>
+                    <option value='option2' className='bg-gray-800 text-white'>
+                      Option 2
+                    </option>
+                  </select>
+                  {/* Custom Dropdown Arrow */}
+                  <div className='absolute right-1 pointer-events-none'>
+                    <svg
+                      width='8'
+                      height='4'
+                      viewBox='0 0 8 4'
+                      fill='none'
+                      xmlns='http://www.w3.org/2000/svg'
+                    >
+                      <path
+                        d='M4.6166 3.78216C5.59187 2.99713 6.46177 2.08236 7.20365 1.0618C7.29497 0.937792 7.34401 0.781719 7.3314 0.616111C7.30346 0.248983 6.9832 -0.0259846 6.61607 0.00195423C4.87454 0.134487 3.12545 0.134487 1.38391 0.00195391C1.01678 -0.0259849 0.696519 0.248983 0.66858 0.616111C0.655977 0.781717 0.705009 0.937788 0.796332 1.06179C1.53821 2.08235 2.40811 2.99713 3.38338 3.78216C3.74427 4.07266 4.25571 4.07266 4.6166 3.78216Z'
+                        fill='#94E7ED'
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Right - 4 Action Buttons */}
+                <div className='flex items-center gap-2'>
+                  {/* Button 1 - Add your SVG here */}
+                  <div className='text-white p-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer hover:bg-white/10'>
+                    {/* SVG 1 - Replace with your icon */}
+                    <svg
+                      width='18'
+                      height='18'
+                      viewBox='0 0 16 16'
+                      fill='none'
+                      xmlns='http://www.w3.org/2000/svg'
+                    >
+                      <path
+                        d='M1.65672 7.66653C1.84209 4.18611 4.84136 1.49015 8.32179 1.67552C11.7775 1.85957 14.4925 4.55018 14.3468 7.60626C14.244 9.53695 12.5751 11.0365 10.6444 10.9336C10.0212 10.9004 9.13813 10.6585 8.61345 11.1301C8.2086 11.494 8.13567 12.1786 8.50886 12.5923C9.05439 13.2782 8.56707 14.3806 7.64773 14.3316C4.16731 14.1462 1.47135 11.1469 1.65672 7.66653Z'
+                        stroke='#7E7E80'
+                        stroke-width='1.5'
+                        stroke-linecap='round'
+                        stroke-linejoin='round'
+                      />
+                      <path
+                        d='M4.31908 7.33317C4.31908 6.96498 4.61755 6.6665 4.98574 6.6665C5.35393 6.6665 5.65241 6.96498 5.65241 7.33317C5.65241 7.70136 5.35393 7.99984 4.98574 7.99984C4.61755 7.99984 4.31908 7.70136 4.31908 7.33317Z'
+                        stroke='#7E7E80'
+                        stroke-width='1.5'
+                        stroke-linecap='round'
+                        stroke-linejoin='round'
+                      />
+                      <path
+                        d='M7.49927 4.84163C7.49927 4.47344 7.79774 4.17497 8.16593 4.17497C8.53412 4.17497 8.8326 4.47344 8.8326 4.84163C8.8326 5.20982 8.53412 5.5083 8.16593 5.5083C7.79774 5.5083 7.49927 5.20982 7.49927 4.84163Z'
+                        stroke='#7E7E80'
+                        stroke-width='1.5'
+                        stroke-linecap='round'
+                        stroke-linejoin='round'
+                      />
+                      <path
+                        d='M10.4823 7.33317C10.4823 6.96498 10.7808 6.6665 11.149 6.6665C11.5172 6.6665 11.8157 6.96498 11.8157 7.33317C11.8157 7.70136 11.5172 7.99984 11.149 7.99984C10.7808 7.99984 10.4823 7.70136 10.4823 7.33317Z'
+                        stroke='#7E7E80'
+                        stroke-width='1.5'
+                        stroke-linecap='round'
+                        stroke-linejoin='round'
+                      />
+                    </svg>
+                  </div>
+
+                  {/* Button 2 - Add your SVG here */}
+                  <div className='text-white p-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer hover:bg-white/10'>
+                    {/* SVG 2 - Replace with your icon */}
+                    <svg
+                      width='16'
+                      height='14'
+                      viewBox='0 0 14 12'
+                      fill='none'
+                      xmlns='http://www.w3.org/2000/svg'
+                    >
+                      <path
+                        d='M1.66675 5H8.00008M1.66675 9H5.66675M1.66675 1H12.3334M8.33341 10.3333H8.34008M11.0001 5.66667C10.5751 6.74431 10.1073 7.22997 9.00008 7.66667C10.1073 8.10336 10.5751 8.58903 11.0001 9.66667C11.4251 8.58902 11.8928 8.10336 13.0001 7.66667C11.8928 7.22997 11.4251 6.74431 11.0001 5.66667Z'
+                        stroke='white'
+                        stroke-opacity='0.5'
+                        stroke-width='1.5'
+                        stroke-linecap='round'
+                        stroke-linejoin='round'
+                      />
+                    </svg>
+                  </div>
+
+                  {/* Button 3 - Add your SVG here */}
+                  <div className='text-white p-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer hover:bg-white/10'>
+                    {/* SVG 3 - Replace with your icon */}
+                    <svg
+                      width='14'
+                      height='18'
+                      viewBox='0 0 12 16'
+                      fill='none'
+                      xmlns='http://www.w3.org/2000/svg'
+                    >
+                      <path
+                        d='M10.9832 8.52082L8.60972 12.6318C7.48616 14.5778 4.99774 15.2446 3.05167 14.121C1.1056 12.9975 0.438832 10.5091 1.56239 8.56298L4.95304 2.69021C5.70208 1.39283 7.36104 0.948316 8.65841 1.69736C9.95579 2.4464 10.4003 4.10535 9.65126 5.40273L6.26061 11.2755C5.88609 11.9242 5.05662 12.1464 4.40793 11.7719C3.75924 11.3974 3.53698 10.5679 3.9115 9.91924L6.96309 4.63375'
+                        stroke='white'
+                        stroke-opacity='0.5'
+                        stroke-width='1.5'
+                        stroke-linecap='round'
+                        stroke-linejoin='round'
+                      />
+                    </svg>
+                  </div>
+
+                  {/* Button 4 - Send Button (existing) */}
+                  <div
+                    onClick={
+                      projectEditor.currentStep === "user_prompt"
+                        ? handlePromptSubmit
+                        : undefined
+                    }
+                    disabled={
+                      !inputValue.trim() ||
+                      projectEditor.currentStep !== "user_prompt"
+                    }
+                    className={`text-white p-2 rounded-lg transition-colors flex items-center justify-center flex-shrink-0 hover:bg-white/10 ${
+                      projectEditor.currentStep === "user_prompt"
+                        ? "cursor-pointer"
+                        : "opacity-50 cursor-not-allowed"
+                    }`}
                   >
-                    <rect
-                      y='0.5'
-                      width='28'
-                      height='28'
-                      rx='6'
-                      fill='white'
-                      fillOpacity='0.1'
-                    />
-                    <path
-                      d='M12.3594 16.1406L8.70896 14.1497C7.75627 13.6302 7.76571 12.2605 8.72538 11.7672C11.3719 10.407 14.186 9.39704 17.0973 8.76249C17.9332 8.58029 18.8885 8.20889 19.5898 8.91018C20.2911 9.61147 19.9197 10.5668 19.7375 11.4027C19.103 14.314 18.093 17.1281 16.7328 19.7746C16.2395 20.7343 14.8698 20.7437 14.3503 19.791L12.3594 16.1406ZM12.3594 16.1406L14.5651 13.9349'
-                      stroke='white'
-                      strokeOpacity='0.5'
-                      strokeWidth='1.5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                  </svg>
+                    <svg
+                      width='16'
+                      height='16'
+                      viewBox='0 0 14 14'
+                      fill='none'
+                      xmlns='http://www.w3.org/2000/svg'
+                    >
+                      <path
+                        d='M5.35939 8.64061L1.70896 6.64974C0.756266 6.13016 0.765709 4.76045 1.72538 4.26722C4.37188 2.90704 7.18598 1.89704 10.0973 1.26249C10.9332 1.08029 11.8885 0.70889 12.5898 1.41018C13.2911 2.11147 12.9197 3.06683 12.7375 3.90275C12.103 6.81403 11.093 9.62812 9.73278 12.2746C9.23955 13.2343 7.86984 13.2437 7.35026 12.291L5.35939 8.64061ZM5.35939 8.64061L7.56513 6.43487'
+                        stroke='#94E7ED'
+                        stroke-width='1.5'
+                        stroke-linecap='round'
+                        stroke-linejoin='round'
+                      />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
