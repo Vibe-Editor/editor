@@ -28,6 +28,7 @@ const StoryArcEngine = ({ storyData, videoPreferences, isLoading = false }) => {
   const minWordCount = 100;
   const maxWordCount = 350;
   const regenerateTimeoutRef = useRef(null);
+  const isUiBusy = isRegenerating || (sections.length === 0 && isLoading);
 
   // Update sections when storyData changes
   React.useEffect(() => {
@@ -292,11 +293,13 @@ const StoryArcEngine = ({ storyData, videoPreferences, isLoading = false }) => {
               step={10}
               value={wordCount}
               onChange={(e) => {
+                if (isUiBusy) return;
                 const newValue = Math.round(Number(e.target.value) / 10) * 10;
                 setWordCount(newValue);
                 handleWordCountChange(newValue);
               }}
-              className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
+              disabled={isUiBusy}
+              className={`absolute inset-0 w-full h-full opacity-0 ${isUiBusy ? 'cursor-not-allowed' : 'cursor-pointer'}`}
               aria-label='Word count'
             />
           </div>
@@ -657,9 +660,10 @@ const StoryArcEngine = ({ storyData, videoPreferences, isLoading = false }) => {
             Ready to select a template? Click Proceed to continue.
           </span>
           <span
-            className='whitespace-nowrap font-bold underline underline-offset-2 text-black cursor-pointer hover:opacity-80'
+            className={`whitespace-nowrap font-bold underline underline-offset-2 text-black ${isUiBusy ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:opacity-80'}`}
             aria-label='Proceed to template selection'
-            onClick={handleProceed}
+            aria-disabled={isUiBusy}
+            onClick={() => { if (isUiBusy) return; handleProceed(); }}
           >
             PROCEED
           </span>
