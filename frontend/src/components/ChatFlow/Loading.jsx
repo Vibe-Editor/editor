@@ -46,9 +46,9 @@ const LOADING_VIDEOS = [
 
 const TOTAL_DURATION_MS = 15000; // 15 seconds
 
-const Loading = ({ onDone, onCancel }) => {
+const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) => {
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [isComplete, setIsComplete] = useState(false);
+  const [isCompleteInternal, setIsCompleteInternal] = useState(false);
 
   // Get user data for avatar
   const { user } = useAuthStore();
@@ -59,7 +59,8 @@ const Loading = ({ onDone, onCancel }) => {
     }
   };
 
-  const progress = Math.min(1, elapsedMs / TOTAL_DURATION_MS);
+  const timedProgress = Math.min(1, elapsedMs / TOTAL_DURATION_MS);
+  const progress = typeof loadingProgress === 'number' ? Math.max(0, Math.min(1, loadingProgress)) : timedProgress;
 
   const currentMessage = useMemo(() => {
     const step = Math.floor(progress * STATUS_MESSAGES.length);
@@ -68,6 +69,11 @@ const Loading = ({ onDone, onCancel }) => {
   }, [progress]);
 
   useEffect(() => {
+    if (isCompleteExternal === true) {
+      // External completion controls done state; stop internal timer updates
+      return;
+    }
+
     let rafId;
     let start;
 
@@ -78,13 +84,15 @@ const Loading = ({ onDone, onCancel }) => {
       if (diff < TOTAL_DURATION_MS) {
         rafId = requestAnimationFrame(tick);
       } else {
-        setIsComplete(true);
+        setIsCompleteInternal(true);
       }
     };
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, []);
+  }, [isCompleteExternal]);
+
+  const isComplete = isCompleteExternal === null ? isCompleteInternal : isCompleteExternal;
 
   // Safe sources (filter out empties so layout still renders gracefully)
   const sources = useMemo(() => {
@@ -318,14 +326,6 @@ const Loading = ({ onDone, onCancel }) => {
                   >
                     Add to timeline
                   </button>
-                  {onCancel && (
-                    <button
-                      className='px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors'
-                      onClick={onCancel}
-                    >
-                      Cancel
-                    </button>
-                  )}
                 </div>
               </div>
             )}

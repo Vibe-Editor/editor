@@ -8,14 +8,17 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [expandedSections, setExpandedSections] = useState({ 0: true });
   const [currentStep, setCurrentStep] = useState(0);
-  const [showLoading, setShowLoading] = useState(false);
+  // Removed old inline loading usage in favor of <Loading /> component
   const [animationPhase, setAnimationPhase] = useState('idle'); // 'idle' | 'out' | 'in'
   const [view, setView] = useState('grid'); // 'grid' | 'loading'
-  const [fullLoading, setFullLoading] = useState(false); // fullscreen loading overlay
+  const [fullLoading, setFullLoading] = useState(false); // legacy (not used)
   const [showReadyToGenerate, setShowReadyToGenerate] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResults, setGenerationResults] = useState([]);
-  const [showAddToTimeline, setShowAddToTimeline] = useState(false);
+  // New: drive full-screen Loading component
+  const [showFullLoading, setShowFullLoading] = useState(false);
+  const [isGenerationComplete, setIsGenerationComplete] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
 
   // Determine if initial template loading is in progress (any section still null)
   const isInitialTemplateLoading = Array.isArray(templateResponses)
@@ -89,54 +92,17 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
 
   // Removed back/next buttons flow in favor of click-to-advance
 
-  const handleLoadingDone = () => {
-    // Here you can dispatch adding to timeline or navigate as needed
-    // For prototype, just close loader and maybe alert
-    setShowLoading(false);
-    window.dispatchEvent(new CustomEvent('timeline:add', { detail: { template: selectedTemplate } }));
-  };
-
-  // Fullscreen Loading overlay when all selections are done
-  if (fullLoading) {
-    if (showAddToTimeline) {
-      return (
-        <div className="w-full h-screen bg-black flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-6 mx-auto">
-              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <h3 className="text-white text-2xl font-semibold">Videos Generated Successfully!</h3>
-            <p className="text-gray-400 mb-6">All 5 videos have been generated and are ready to be added to your timeline.</p>
-            <button
-              onClick={() => {
-                console.log('Adding videos to timeline:', generationResults);
-                window.dispatchEvent(new CustomEvent('timeline:add', { detail: { results: generationResults } }));
-                // You can add timeline logic here or close the component
-                if (onClose) onClose();
-              }}
-              className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
-            >
-              Add to Timeline
-            </button>
-          </div>
-        </div>
-      );
-    }
-
+  // Replace old overlay with Loading component (full screen)
+  if (showFullLoading) {
     return (
-      <div className="w-full h-screen bg-black flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <h3 className="text-white text-xl font-semibold">
-            {isGenerating ? 'Generating Videos...' : 'Loading...'}
-          </h3>
-          <p className="text-gray-400">
-            {isGenerating ? 'Please wait while we generate your videos. This may take a few moments.' : 'Please wait...'}
-          </p>
-        </div>
-      </div>
+      <Loading
+        isCompleteExternal={isGenerationComplete}
+        loadingProgress={generationProgress}
+        onDone={() => {
+          window.dispatchEvent(new CustomEvent('timeline:add', { detail: { results: generationResults } }));
+          if (onClose) onClose();
+        }}
+      />
     );
   }
 
@@ -164,7 +130,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
   const handleReadyGenerate = async () => {
     console.log('Starting video generation for all 5 segments...');
     setIsGenerating(true);
-    setFullLoading(true);
+    setShowFullLoading(true);
     setAnimationPhase('in');
     setTimeout(() => setAnimationPhase('idle'), 20);
 
@@ -190,7 +156,9 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
       console.log('✅ Story sections:', storyArcData?.sections);
 
       // Create 5 parallel requests for video generation
-      const generationPromises = Array.from({ length: 5 }, async (_, index) => {
+      let completed = 0;
+      const total = 5;
+      const generationPromises = Array.from({ length: total }, async (_, index) => {
         const selectedTemplate = getTemplateSelection(index);
         const segmentId = segmentIds[index];
 
@@ -227,6 +195,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
             result: result
           });
 
+          completed += 1;
+          setGenerationProgress(completed / total);
           return {
             sectionIndex: index,
             segmentId: segmentId,
@@ -234,6 +204,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
           };
         } catch (error) {
           console.error(`❌ Video generation request ${index + 1}/5 failed for segment ${segmentId}:`, error);
+          completed += 1;
+          setGenerationProgress(completed / total);
           return {
             sectionIndex: index,
             segmentId: segmentId,
@@ -248,8 +220,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
       console.log('All 5 video generation requests completed:', results);
       setGenerationResults(results);
       
-      // Show add to timeline screen
-      setShowAddToTimeline(true);
+      // Signal Loading component to show completion UI
+      setIsGenerationComplete(true);
       
     } catch (error) {
       console.error('Error during video generation process:', error);
