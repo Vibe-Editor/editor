@@ -233,8 +233,8 @@ const ProjectEditor = () => {
     );
   }
 
-  return (
-    <div className='w-full h-screen bg-gradient-to-b from-[#464646] to-[#0d0d0e] from-10% to-100% flex flex-col relative'>
+   return (
+     <div className='w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex flex-col relative'>
       {/* Absolute positioned header elements */}
       <div className='absolute top-6 left-6 z-10 flex items-center gap-3'>
         <img src={assets.SandBoxLogo} alt='Usuals.ai' className='w-10 h-10' />
