@@ -86,16 +86,14 @@ const VideoGrid = ({ options, onSelect, selectedId, compact = false, showNavigat
 
       <div
         className={`grid grid-cols-1 sm:grid-cols-2 ${
-          compact ? "gap-3 max-w-2xl p-2" : "gap-4 sm:gap-6 max-w-5xl p-4"
+          compact ? "gap-3 max-w-3xl p-2" : "gap-4 sm:gap-6 max-w-6xl p-4"
         } mx-auto`}
       >
       {options.map((option) => (
         <div
           key={option.id}
           onClick={() => onSelect(option)}
-          className={`relative cursor-pointer transition-all duration-300 ${
-            selectedId === option.id ? "scale-105" : "hover:scale-[1.02]"
-          }`}
+          className={`relative cursor-pointer`}
         >
           {/* Glass Card Container */}
           <div
@@ -166,7 +164,7 @@ const VideoGrid = ({ options, onSelect, selectedId, compact = false, showNavigat
 
               {/* Selection Indicator */}
               {selectedId === option.id && (
-                <div className='absolute inset-0 flex items-center justify-center bg-amber-400/10 backdrop-blur-sm'>
+                <div className='absolute inset-0 flex items-center justify-center bg-amber-400/10 backdrop-blur-none'>
                   <div className='w-16 h-16 bg-amber-400 rounded-full flex items-center justify-center shadow-xl animate-pulse'>
                     <svg
                       className='w-8 h-8 text-white'

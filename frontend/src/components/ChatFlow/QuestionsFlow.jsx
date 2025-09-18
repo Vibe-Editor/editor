@@ -12,6 +12,45 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenera
   const currentQuestion = questionsData.preference_questions?.[currentQuestionKey];
   const isLastQuestion = currentQuestionIndex === questionKeys.length - 1;
 
+  // Map question index to custom headings. Fill in your desired headings here.
+  const questionHeadings = {
+    0: 'Just a [[few questions]]',
+    1: 'Understanding your [[Preferences]]',
+    2: 'Setting the [[Space]]',
+    3: 'Lighting & [[Focus]]',
+    4: 'Almost [[Done]]',
+    // Add more indices if there are more questions
+  };
+
+  const mainHeading =
+    questionHeadings[currentQuestionIndex] ||
+    currentQuestion?.heading ||
+    currentQuestion?.title ||
+    'Your Preferences';
+
+  // Render helper to allow [[highlight]] segments inside the heading
+  const formatHeadingText = (text) => {
+    if (!text) return null;
+    const parts = [];
+    let lastIndex = 0;
+    const regex = /\[\[(.+?)\]\]/g;
+    let match;
+    let key = 0;
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+      parts.push(
+        <span key={`hl-${key++}`} className="text-[#94E7EDCC]">{match[1]}</span>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+    return parts;
+  };
+
   useEffect(() => {
     setSelectedAnswer(currentAnswers[currentQuestionKey] || null);
   }, [currentQuestionKey, currentAnswers]);
@@ -97,13 +136,13 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenera
 
   return (
     <div className="max-w-6xl mx-auto p-2 relative">
-      <div className="mb-4 text-center">
-        <h2 className="text-white text-lg font-semibold mb-1">
-          {currentQuestion.question}
+      <div className="mb-6 text-center">
+        <h1 className="text-white text-3xl sm:text-5xl font-bold mb-2">
+          {formatHeadingText(mainHeading)}
+        </h1>
+        <h2 className="text-white/50 text-base sm:text-lg font-semibold mb-1">
+          {currentQuestion?.question}
         </h2>
-        <p className="text-gray-400">
-          Question {currentQuestionIndex + 1} of {questionKeys.length}
-        </p>
       </div>
 
       {/* Animated grid with overflow hidden to avoid scrollbars during slide or Ready screen */}

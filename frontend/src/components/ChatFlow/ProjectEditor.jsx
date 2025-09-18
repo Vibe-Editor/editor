@@ -29,6 +29,15 @@ const ProjectEditor = () => {
 
   // Get user data for avatar
   const { user } = useAuthStore();
+  const displayName = (user?.name || user?.email?.split('@')[0] || 'there')
+    .toString()
+    .trim();
+  const greetingPrefix = (() => {
+    const hours = new Date().getHours();
+    if (hours < 12) return 'Good Morning';
+    if (hours < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  })();
 
   useEffect(() => {
     if (selectedProject) {
@@ -332,7 +341,12 @@ const ProjectEditor = () => {
         <div className="w-full max-w-6xl">
           {projectEditor.currentStep === 'video_type_selection' && projectEditor.questionsData && (
             <div>
-              <h2 className="text-white text-2xl font-semibold mb-8 text-center">Choose Your <span className="text-[#94E7EDCC]">Video Type</span></h2>
+              <h1 className="text-white text-3xl sm:text-5xl font-bold mb-2 text-center">
+                {greetingPrefix} <span className="text-[#94E7EDCC]">{displayName}</span>
+              </h1>
+              <h2 className="text-white/50 text-lg sm:text-xl font-semibold mb-6 text-center">
+                Choose Your Video Type
+              </h2>
               <VideoGrid
                 options={Object.entries(projectEditor.questionsData.video_type_selection).map(([key, value]) => ({
                   id: key,
@@ -426,33 +440,10 @@ const ProjectEditor = () => {
 
               {/* Options Row */}
               <div className="flex items-center justify-between">
-                {/* Left - Dropdown */}
-                <div className="flex items-center relative">
-                  <select className="bg-white/5 text-[#94E7ED] rounded-lg px-3 py-2 pr-8 focus:outline-none appearance-none cursor-pointer">
-                    <option value="" className="bg-gray-800 text-white">
-                      Model Config
-                    </option>
-                    <option value="option1" className="bg-gray-800 text-white">
-                      Option 1
-                    </option>
-                    <option value="option2" className="bg-gray-800 text-white">
-                      Option 2
-                    </option>
-                  </select>
-                  {/* Custom Dropdown Arrow */}
-                  <div className="absolute right-1 pointer-events-none">
-                    <svg
-                      width="8"
-                      height="4"
-                      viewBox="0 0 8 4"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M4.6166 3.78216C5.59187 2.99713 6.46177 2.08236 7.20365 1.0618C7.29497 0.937792 7.34401 0.781719 7.3314 0.616111C7.30346 0.248983 6.9832 -0.0259846 6.61607 0.00195423C4.87454 0.134487 3.12545 0.134487 1.38391 0.00195391C1.01678 -0.0259849 0.696519 0.248983 0.66858 0.616111C0.655977 0.781717 0.705009 0.937788 0.796332 1.06179C1.53821 2.08235 2.40811 2.99713 3.38338 3.78216C3.74427 4.07266 4.25571 4.07266 4.6166 3.78216Z"
-                        fill="#94E7ED"
-                      />
-                    </svg>
+                {/* Left - Simple Label */}
+                <div className="flex items-center">
+                  <div className="bg-white/5 text-[#94E7ED] rounded-lg px-3 py-2">
+                    GPT-5
                   </div>
                 </div>
 
