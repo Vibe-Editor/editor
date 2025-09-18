@@ -357,7 +357,7 @@ const ProjectEditor = () => {
             projectEditor.questionsData && (
               <div>
                 <h2 className='text-white text-2xl font-semibold mb-8 text-center'>
-                  Choose Your Video Type
+                  Choose Your <span className='text-[#94E7EDCC]'>Video Type</span>
                 </h2>
                 <VideoGrid
                   options={Object.entries(
@@ -376,7 +376,7 @@ const ProjectEditor = () => {
           {projectEditor.currentStep === "user_prompt" && (
             <div className='text-center'>
               <h2 className='text-white text-7xl font-bold mb-6'>
-                Let's bring your idea to life!
+                Let's bring <span className='text-[#94E7EDCC]'>your idea to life!</span>
               </h2>
               <p className='text-gray-300 text-lg max-w-2xl mx-auto leading-relaxed'>
                 Describe your idea in detail below for better video generation

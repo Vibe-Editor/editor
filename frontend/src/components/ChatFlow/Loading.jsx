@@ -49,10 +49,10 @@ const TOTAL_DURATION_MS = 15000; // 15 seconds
 const Loading = ({ onDone, onCancel }) => {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  
+
   // Get user data for avatar
   const { user } = useAuthStore();
-  
+
   const handleClose = () => {
     if (onCancel) {
       onCancel();
@@ -98,26 +98,29 @@ const Loading = ({ onDone, onCancel }) => {
   return (
     <div className='w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex flex-col relative'>
       {/* Radial gradient overlay */}
-      <div 
+      <div
         className='absolute inset-0 opacity-60'
         style={{
-          background: 'radial-gradient(ellipse 90% 60% at center, #3A2849 0%, transparent 70%, transparent 100%)'
+          background:
+            "radial-gradient(ellipse 90% 60% at center, #3A2849 0%, transparent 70%, transparent 100%)",
         }}
       ></div>
-      
+
       {/* Small gradient above center */}
-      <div 
+      <div
         className='absolute inset-0'
         style={{
-          background: 'radial-gradient(ellipse 40% 20% at center top 25%, #556771B2 0%, transparent 60%, transparent 100%)'
+          background:
+            "radial-gradient(ellipse 40% 20% at center top 25%, #556771B2 0%, transparent 60%, transparent 100%)",
         }}
       ></div>
-      
+
       {/* Small gradient below center */}
-      <div 
+      <div
         className='absolute inset-0'
         style={{
-          background: 'radial-gradient(ellipse 40% 20% at center bottom 25%, #556771B2 0%, transparent 60%, transparent 100%)'
+          background:
+            "radial-gradient(ellipse 40% 20% at center bottom 25%, #556771B2 0%, transparent 60%, transparent 100%)",
         }}
       ></div>
       {/* Header elements copied from ProjectEditor.jsx */}
@@ -172,159 +175,163 @@ const Loading = ({ onDone, onCancel }) => {
           </div>
         )}
       </div>
-      
+
       {/* Center Content Area */}
       <div className='flex-1 flex flex-col px-6 pt-16'>
         {/* Loading Text - aligned with header */}
         <div className='text-center mb-6'>
-          <h2 className='text-white text-4xl font-semibold mb-2'>Loading your Video</h2>
+          <h2 className='text-white text-4xl font-semibold mb-2'>
+            Loading your <span className='text-[#F9D312]'>Video</span>
+          </h2>
           <p className='text-gray-300 text-lg'>Please wait for a few seconds</p>
         </div>
-        
+
         <div className='flex-1 flex items-center justify-center -mt-8'>
           <div className='relative w-full max-w-5xl'>
-        {!isComplete ? (
-          <>
+            {!isComplete ? (
+              <>
                 {/* New 7-video layout: 2-3-2 arrangement */}
                 <div className='flex flex-col gap-4'>
-                 {/* Top Row - 2 videos */}
-                 <div className='flex gap-4 justify-center'>
-                   <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
-                <video
-                  key={sources[0]?.src || "v1"}
-                  src={sources[0]?.src}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className='absolute inset-0 w-full h-full object-cover block'
-                />
-              </div>
-                   <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
-                <video
-                  key={sources[1]?.src || "v2"}
-                  src={sources[1]?.src}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className='absolute inset-0 w-full h-full object-cover block'
-                />
-                   </div>
-              </div>
-
-                {/* Middle Row - 3 videos */}
-                <div className='flex gap-4 justify-center'>
-                  <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
-                <video
-                  key={sources[2]?.src || "v3"}
-                  src={sources[2]?.src}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className='absolute inset-0 w-full h-full object-cover block'
-                />
-              </div>
-                  <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
-                <video
-                  key={sources[3]?.src || "v4"}
-                  src={sources[3]?.src}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className='absolute inset-0 w-full h-full object-cover block'
-                />
-              </div>
-                  <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
-                <video
-                  key={sources[4]?.src || "v5"}
-                  src={sources[4]?.src}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className='absolute inset-0 w-full h-full object-cover block'
-                />
-                  </div>
-              </div>
-
-                {/* Bottom Row - 2 videos */}
-                <div className='flex gap-4 justify-center'>
-                  <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
-                    <video
-                      key={sources[5]?.src || "v6"}
-                      src={sources[5]?.src}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className='absolute inset-0 w-full h-full object-cover block'
-                    />
-                  </div>
-                  <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
-                    {sources[6]?.src ? (
+                  {/* Top Row - 2 videos */}
+                  <div className='flex gap-4 justify-center'>
+                    <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
                       <video
-                        key={sources[6]?.src || "v7"}
-                        src={sources[6]?.src}
+                        key={sources[0]?.src || "v1"}
+                        src={sources[0]?.src}
                         autoPlay
                         muted
                         loop
                         playsInline
                         className='absolute inset-0 w-full h-full object-cover block'
                       />
-                    ) : (
-                      <div className='absolute inset-0 w-full h-full flex items-center justify-center bg-gray-800'>
-                        <div className='text-gray-500 text-lg'>Video 7 Coming Soon</div>
-                      </div>
-                    )}
+                    </div>
+                    <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
+                      <video
+                        key={sources[1]?.src || "v2"}
+                        src={sources[1]?.src}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className='absolute inset-0 w-full h-full object-cover block'
+                      />
+                    </div>
+                  </div>
+
+                  {/* Middle Row - 3 videos */}
+                  <div className='flex gap-4 justify-center'>
+                    <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
+                      <video
+                        key={sources[2]?.src || "v3"}
+                        src={sources[2]?.src}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className='absolute inset-0 w-full h-full object-cover block'
+                      />
+                    </div>
+                    <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
+                      <video
+                        key={sources[3]?.src || "v4"}
+                        src={sources[3]?.src}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className='absolute inset-0 w-full h-full object-cover block'
+                      />
+                    </div>
+                    <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
+                      <video
+                        key={sources[4]?.src || "v5"}
+                        src={sources[4]?.src}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className='absolute inset-0 w-full h-full object-cover block'
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bottom Row - 2 videos */}
+                  <div className='flex gap-4 justify-center'>
+                    <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
+                      <video
+                        key={sources[5]?.src || "v6"}
+                        src={sources[5]?.src}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className='absolute inset-0 w-full h-full object-cover block'
+                      />
+                    </div>
+                    <div className='relative w-80 h-48 rounded-2xl overflow-hidden bg-gray-900'>
+                      {sources[6]?.src ? (
+                        <video
+                          key={sources[6]?.src || "v7"}
+                          src={sources[6]?.src}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          className='absolute inset-0 w-full h-full object-cover block'
+                        />
+                      ) : (
+                        <div className='absolute inset-0 w-full h-full flex items-center justify-center bg-gray-800'>
+                          <div className='text-gray-500 text-lg'>
+                            Video 7 Coming Soon
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-            </div>
-          </>
-        ) : (
-          <div className='flex flex-col items-center justify-center text-center py-10'>
-            <div className='w-14 h-14 rounded-full bg-yellow-400 flex items-center justify-center mb-4'>
-              <svg
-                className='w-7 h-7 text-black'
-                viewBox='0 0 20 20'
-                fill='currentColor'
-              >
-                <path
-                  fillRule='evenodd'
-                  d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                  clipRule='evenodd'
-                />
-              </svg>
-            </div>
-            <h2 className='text-white text-2xl font-semibold mb-2'>
-              Your videos are ready
-            </h2>
-            <p className='text-gray-400 mb-6'>
-              Everything is set. You can add them to your timeline now.
-            </p>
-            <div className='flex items-center gap-3'>
-              <button
-                className='px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors'
-                onClick={onDone}
-              >
-                Add to timeline
-              </button>
-              {onCancel && (
-                <button
-                  className='px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors'
-                  onClick={onCancel}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-            </div>
+              </>
+            ) : (
+              <div className='flex flex-col items-center justify-center text-center py-10'>
+                <div className='w-14 h-14 rounded-full bg-yellow-400 flex items-center justify-center mb-4'>
+                  <svg
+                    className='w-7 h-7 text-black'
+                    viewBox='0 0 20 20'
+                    fill='currentColor'
+                  >
+                    <path
+                      fillRule='evenodd'
+                      d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
+                      clipRule='evenodd'
+                    />
+                  </svg>
+                </div>
+                <h2 className='text-white text-2xl font-semibold mb-2'>
+                  Your videos are ready
+                </h2>
+                <p className='text-gray-400 mb-6'>
+                  Everything is set. You can add them to your timeline now.
+                </p>
+                <div className='flex items-center gap-3'>
+                  <button
+                    className='px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors'
+                    onClick={onDone}
+                  >
+                    Add to timeline
+                  </button>
+                  {onCancel && (
+                    <button
+                      className='px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors'
+                      onClick={onCancel}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
-        
+
         {/* Progress Bar - Fixed at bottom with full width */}
         {!isComplete && (
           <div className='absolute bottom-0 left-0 right-0 w-full h-2 bg-gray-800'>
