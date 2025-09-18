@@ -85,23 +85,43 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
       if (success) {
         console.log('✅ Successfully added generated videos to timeline');
         
-        // Close the chat interface and show the main editor
+        // Trigger chat widget open and close animation
         setTimeout(() => {
-          // Close chat interface
-          window.dispatchEvent(new CustomEvent("chatInterface:close"));
-          
-          if (typeof window.hideChatInterface === "function") {
-            window.hideChatInterface();
+          // Open chat widget first
+          if (typeof window.openChat === "function") {
+            console.log('📂 Opening chat widget...');
+            window.openChat();
+            
+            // Close chat widget after a short delay to show the animation
+            setTimeout(() => {
+              if (typeof window.closeChat === "function") {
+                console.log('📂 Closing chat widget...');
+                window.closeChat();
+              }
+            }, 1500); // 1.5 second delay to show the open/close animation
           } else {
-            // Fallback: hide the overlay directly
-            const overlay = document.querySelector("react-chat-interface");
-            if (overlay) {
-              overlay.style.display = "none";
-            }
+            console.warn('Chat widget functions not available');
           }
           
-          // Open the main editor/timeline view
-          window.dispatchEvent(new CustomEvent("flowWidget:open"));
+          // Close the chat interface and stay in timeline editor
+          setTimeout(() => {
+            // Close chat interface
+            window.dispatchEvent(new CustomEvent("chatInterface:close"));
+            
+            if (typeof window.hideChatInterface === "function") {
+              window.hideChatInterface();
+            } else {
+              // Fallback: hide the overlay directly
+              const overlay = document.querySelector("react-chat-interface");
+              if (overlay) {
+                overlay.style.display = "none";
+              }
+            }
+            
+            // Stay in timeline editor - no need to open sandbox/FlowWidget
+            // Videos are already added to timeline, user can see them in the editor
+            
+          }, 2000); // Delay to allow chat widget animation to complete
           
         }, 1000); // Small delay to show success state
         

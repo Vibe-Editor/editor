@@ -458,6 +458,38 @@ const FinalWorkingInterface = () => {
     }
   };
 
+  // Close chat widget and open editor
+  const openEditorAndCloseChat = () => {
+    // First, close the chat interface and navigate to editor
+    console.log("🎯 Closing chat interface and navigating to editor");
+    
+    // Close the chat interface overlay and dispatch close event
+    window.dispatchEvent(new CustomEvent("chatInterface:close"));
+
+    if (typeof window.hideChatInterface === "function") {
+      window.hideChatInterface();
+    } else {
+      // Fallback: hide the overlay directly
+      const overlay = document.querySelector("react-chat-interface");
+      if (overlay) {
+        overlay.style.display = "none";
+      }
+    }
+
+    // Then close the chat widget
+    if (typeof window.closeChat === "function") {
+      window.closeChat();
+      console.log("Chat widget closed via window.closeChat");
+    } else {
+      // Fallback: try to close manually
+      const chatWidget = document.querySelector("react-chat-widget");
+      if (chatWidget) {
+        chatWidget.setAttribute("data-open", "false");
+        console.log("Chat widget closed via manual attribute setting");
+      }
+    }
+  };
+
   // Dummy project data for non-authenticated users
   const dummyProjects = [
     {
@@ -548,6 +580,34 @@ const FinalWorkingInterface = () => {
                 />
               </svg>
               <span>Invite</span>
+            </div>
+            <div
+              onClick={openEditorAndCloseChat}
+              className='bg-[#4A90E2] hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer'
+            >
+              <svg
+                width='16'
+                height='16'
+                viewBox='0 0 16 16'
+                fill='none'
+                xmlns='http://www.w3.org/2000/svg'
+              >
+                <path
+                  d='M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z'
+                  stroke='currentColor'
+                  strokeWidth='1.5'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                />
+                <path
+                  d='M6 7h4M6 9h2'
+                  stroke='currentColor'
+                  strokeWidth='1.5'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                />
+              </svg>
+              <span>Open Editor</span>
             </div>
             <ChatLoginButton />
           </div>
@@ -791,6 +851,34 @@ const FinalWorkingInterface = () => {
               />
             </svg>
             <span>Invite</span>
+          </div>
+          <div
+            onClick={openEditorAndCloseChat}
+            className='bg-[#4A90E2] hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer'
+          >
+            <svg
+              width='16'
+              height='16'
+              viewBox='0 0 16 16'
+              fill='none'
+              xmlns='http://www.w3.org/2000/svg'
+            >
+              <path
+                d='M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z'
+                stroke='currentColor'
+                strokeWidth='1.5'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+              />
+              <path
+                d='M6 7h4M6 9h2'
+                stroke='currentColor'
+                strokeWidth='1.5'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+              />
+            </svg>
+            <span>Open Editor</span>
           </div>
           <div
             // Quick project creation: create project without triggering chat flow
