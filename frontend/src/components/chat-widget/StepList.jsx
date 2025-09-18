@@ -25,9 +25,7 @@ export default function StepList({
         return Brain;
       case 1: // Choose Concept
         return Brain;
-      case 4: // Image Generation
-        return Image;
-      case 5: // Video Generation
+      case 4: // Video Generation
         return Video;
       default:
         return Brain;
