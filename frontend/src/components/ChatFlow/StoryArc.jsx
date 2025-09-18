@@ -177,13 +177,18 @@ const StoryArcEngine = ({ storyData, videoPreferences, isLoading = false }) => {
 
   const handleProceed = async () => {
     console.log('Starting template search for all 5 story segments...');
-    
+
+    // Navigate immediately and show skeletons while loading
+    setShowTemplateSelection(true);
+    setSelectedTemplates(new Array(5).fill(null));
+    setTemplateResponses(new Array(5).fill(null));
+
     try {
-      // Make 5 parallel requests to find similar templates for each section
+      // Make 5 parallel requests and stream results into state as they resolve
       const templatePromises = sections.map(async (section, index) => {
         console.log(`Making API request ${index + 1}/5 for section: ${section.title}`);
         console.log(`Description: ${section.content}`);
-        
+
         try {
           const result = await templateService.findSimilarTemplates(section.content);
           console.log(`✅ API request ${index + 1}/5 completed successfully:`, {
@@ -192,45 +197,29 @@ const StoryArcEngine = ({ storyData, videoPreferences, isLoading = false }) => {
             totalCount: result.totalCount,
             response: result
           });
-          return {
-            sectionIndex: index,
-            sectionTitle: section.title,
-            result: result
-          };
+
+          // Update only this section's templates immediately
+          setTemplateResponses((prev) => {
+            const updated = Array.isArray(prev) ? [...prev] : new Array(5).fill(null);
+            updated[index] = result.templates || [];
+            return updated;
+          });
         } catch (error) {
           console.error(`❌ API request ${index + 1}/5 failed for section ${section.title}:`, error);
-          return {
-            sectionIndex: index,
-            sectionTitle: section.title,
-            error: error.message,
-            result: { templates: [], totalCount: 0 }
-          };
+          setTemplateResponses((prev) => {
+            const updated = Array.isArray(prev) ? [...prev] : new Array(5).fill(null);
+            updated[index] = [];
+            return updated;
+          });
         }
       });
 
-      // Wait for all requests to complete
-      const results = await Promise.all(templatePromises);
-      
-      console.log('All 5 template search requests completed:', results);
-      
-      // Store template responses for each section
-      const templateResponsesArray = new Array(5).fill(null);
-      results.forEach((result) => {
-        if (result.result && result.result.templates) {
-          templateResponsesArray[result.sectionIndex] = result.result.templates;
-        }
-      });
-      
-      setTemplateResponses(templateResponsesArray);
-      setSelectedTemplates(new Array(5).fill(null)); // Initialize with no selections
-      
-      // Show template selection after all requests are done
-      setShowTemplateSelection(true);
-      
+      // Await all to finish (UI already showing and updating progressively)
+      await Promise.all(templatePromises);
+      console.log('All 5 template search requests completed');
     } catch (error) {
       console.error('Error during template search process:', error);
-      // Still show template selection even if there are errors
-      setShowTemplateSelection(true);
+      // Keep TemplateSelection open even if there are errors
     }
   };
 

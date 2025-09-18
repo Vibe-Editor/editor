@@ -17,6 +17,11 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
   const [generationResults, setGenerationResults] = useState([]);
   const [showAddToTimeline, setShowAddToTimeline] = useState(false);
 
+  // Determine if initial template loading is in progress (any section still null)
+  const isInitialTemplateLoading = Array.isArray(templateResponses)
+    ? templateResponses.some((t) => t === null)
+    : false;
+
   // Get templates for current step (limit to 4 fresh choices)
   const currentTemplates = (templateResponses[currentStep] || []).slice(0, 4);
 
@@ -254,7 +259,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
   };
 
   return (
-    <div className="w-full h-screen bg-black flex">
+    <div className="w-full h-screen bg-black flex relative">
       {/* Left Panel - Story Arc Content */}
       <div className="w-1/3 bg-gray-900 flex flex-col border-r border-gray-700">
         {/* Header */}
@@ -310,7 +315,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
       </div>
 
       {/* Right Panel - Template Selection */}
-      <div className="flex-1 flex flex-col relative">
+      <div className={`flex-1 flex flex-col relative`}>
         {/* Back Button in main content area - only show if not on step 0 */}
         {currentStep > 0 && (
           <div
@@ -439,7 +444,19 @@ const TemplateSelection = ({ storyArcData, templateResponses, selectedTemplates,
             </div>
           </div>
         </div>
-      </div>
+      {/* Fullscreen blur + centered loader while fetching templates on enter */}
+      {isInitialTemplateLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop blur overlay */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+          {/* Center loader */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+            <p className="mt-4 text-gray-200 text-sm" aria-live="polite">Loading templates...</p>
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 };
