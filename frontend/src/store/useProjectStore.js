@@ -40,6 +40,9 @@ const storeImpl = (set, get) => ({
 
   // Template selections per story section (0..4)
   templateSelections: {},
+  
+  // Preserve user preference videos for Loading component (before preferenceAnswers gets cleared)
+  preferenceVideos: [],
   loadingData: {
     conversations: false,
     concepts: false,
@@ -277,6 +280,10 @@ const storeImpl = (set, get) => ({
     return templateSelections?.[sectionIndex] || null;
   },
   clearTemplateSelections: () => set({ templateSelections: {} }),
+
+  // Preference videos actions (to preserve videos before preferenceAnswers gets cleared)
+  setPreferenceVideos: (videos) => set({ preferenceVideos: videos }),
+  clearPreferenceVideos: () => set({ preferenceVideos: [] }),
 
   // Clear project editor after successful API call
   clearProjectEditorAfterSave: () => {

@@ -19,6 +19,7 @@ const ProjectEditor = () => {
   const setChatMessages = useProjectStore((state) => state.setChatMessages);
   const resetProjectEditor = useProjectStore((state) => state.resetProjectEditor);
   const clearProjectEditorAfterSave = useProjectStore((state) => state.clearProjectEditorAfterSave);
+  const setPreferenceVideos = useProjectStore((state) => state.setPreferenceVideos);
   
   const [inputValue, setInputValue] = useState('');
   const [showStoryArc, setShowStoryArc] = useState(false);
@@ -152,6 +153,18 @@ const ProjectEditor = () => {
       // Store the video preferences response for later use
       setVideoPreferences(result);
       console.log('📦 Stored video preferences in state:', result);
+      
+      // Extract and preserve preference videos before clearing preferenceAnswers
+      const preferenceVideos = [];
+      if (allAnswers && typeof allAnswers === 'object') {
+        Object.values(allAnswers).forEach((ans) => {
+          if (preferenceVideos.length >= 2) return; // Only take first 2
+          const src = (ans?.s3_key || ans?.s3Key || '').trim();
+          if (src) preferenceVideos.push(src);
+        });
+      }
+      console.log('📦 Extracted preference videos:', preferenceVideos);
+      setPreferenceVideos(preferenceVideos);
       
       // Generate concept with preferences after successful save
       try {

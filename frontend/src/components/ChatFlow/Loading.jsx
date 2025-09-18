@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../../hooks/useAuthStore";
 import { assets } from "../../assets/assets";
+import { useProjectStore } from "../../store/useProjectStore";
 
 const STATUS_MESSAGES = [
   "Analyzing your story arc...",
@@ -11,38 +12,7 @@ const STATUS_MESSAGES = [
   "Finalizing render plan...",
 ];
 
-// Paste your S3 video URLs here (must be CORS-accessible). Now 7 items (2-3-2 layout).
-// Example: 'https://your-bucket.s3.amazonaws.com/path/to/video.mp4'
-const LOADING_VIDEOS = [
-  {
-    id: "v1",
-    src: "https://ds0fghatf06yb.cloudfront.net/cmfl73asq03m3p0il6r1q3uti/videos/cmfl7g1ux03n5p0ilgu9yhovk/588a5440-b90e-4efb-9efe-884f50f13dc8.mp4",
-  },
-  {
-    id: "v2",
-    src: "https://ds0fghatf06yb.cloudfront.net/cmfl73asq03m3p0il6r1q3uti/videos/cmfl7g1ux03n5p0ilgu9yhovk/6c7f3cfa-ae2c-47b0-9b9e-064443a3ea9e.mp4",
-  },
-  {
-    id: "v3",
-    src: "https://ds0fghatf06yb.cloudfront.net/cmfl73asq03m3p0il6r1q3uti/videos/cmfl7g1ux03n5p0ilgu9yhovk/d68b2032-3ffd-4cc8-8044-91f4cf9a008d.mp4",
-  },
-  {
-    id: "v4",
-    src: "https://ds0fghatf06yb.cloudfront.net/cmfl73asq03m3p0il6r1q3uti/videos/cmfl7g1ux03n5p0ilgu9yhovk/659d4720-2949-468e-8510-cf99f5cbe2d2.mp4",
-  },
-  {
-    id: "v5",
-    src: "https://ds0fghatf06yb.cloudfront.net/cmfl73asq03m3p0il6r1q3uti/videos/cmfl7g1ux03n5p0ilgu9yhovk/a65c4a10-cd28-4f12-ac0e-84542d614f20.mp4",
-  },
-  {
-    id: "v6",
-    src: "https://ds0fghatf06yb.cloudfront.net/cmfl73asq03m3p0il6r1q3uti/videos/cmfl7g1ux03n5p0ilgu9yhovk/a019d446-45b5-4e77-b7af-917532e27fa6.mp4",
-  },
-  {
-    id: "v7",
-    src: "https://ds0fghatf06yb.cloudfront.net/cmfp89m7400hip0pbum4m3qtu/videos/cmfp8alik00icp0pb9nt7ny7s/ab66b55f-b7db-4fc6-ba71-a25ab47014ab.mp4", // Placeholder for 7th video - to be provided later
-  },
-];
+// Sources are dynamically built from store: 5 from template selections + 2 from user preference answers
 
 const TOTAL_DURATION_MS = 15000; // 15 seconds
 
@@ -52,6 +22,8 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
 
   // Get user data for avatar
   const { user } = useAuthStore();
+  const templateSelections = useProjectStore((s) => s.templateSelections);
+  const preferenceVideos = useProjectStore((s) => s.preferenceVideos || []);
 
   const handleClose = () => {
     if (onCancel) {
@@ -94,14 +66,43 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
 
   const isComplete = isCompleteExternal === null ? isCompleteInternal : isCompleteExternal;
 
-  // Safe sources (filter out empties so layout still renders gracefully)
+  // Build sources: 5 from selected templates (s3Key) + 2 from preserved preference videos
   const sources = useMemo(() => {
-    const filled = LOADING_VIDEOS.map((v) => ({
-      ...v,
-      src: (v.src || "").trim(),
-    }));
-    return filled;
-  }, []);
+    console.log('🔍 Loading.jsx - Building video sources');
+    console.log('🔍 templateSelections:', templateSelections);
+    console.log('🔍 preferenceVideos:', preferenceVideos);
+
+    const templateSrcs = [];
+    if (templateSelections && typeof templateSelections === 'object') {
+      // Ensure order by section index 0..4
+      for (let i = 0; i < 5; i += 1) {
+        const t = templateSelections[i];
+        const src = (t?.s3Key || '').trim();
+        if (src) {
+          console.log(`✅ Template ${i} s3Key:`, src);
+          templateSrcs.push(src);
+        } else {
+          console.log(`❌ Template ${i} missing s3Key:`, t);
+        }
+      }
+    }
+
+    // Use preserved preference videos (up to 2)
+    const userPrefSrcs = Array.isArray(preferenceVideos) 
+      ? preferenceVideos.filter(Boolean).slice(0, 2)
+      : [];
+    
+    console.log('🔍 Final templateSrcs:', templateSrcs);
+    console.log('🔍 Final userPrefSrcs (from preserved):', userPrefSrcs);
+
+    const combined = [...templateSrcs.slice(0, 5), ...userPrefSrcs.slice(0, 2)];
+    console.log('🔍 Combined sources:', combined);
+
+    // Normalize to seven entries with ids v1..v7 and empty src if missing
+    const result = Array.from({ length: 7 }).map((_, idx) => ({ id: `v${idx + 1}`, src: combined[idx] || '' }));
+    console.log('🔍 Final result:', result);
+    return result;
+  }, [templateSelections, preferenceVideos]);
 
   return (
     <div className='w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex flex-col relative'>
