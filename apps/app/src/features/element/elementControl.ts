@@ -919,7 +919,7 @@ export class ElementControl extends LitElement {
         localpath: path,
         filetype: "audio",
         speed: 1,
-        track: 0, // Initialize track property for row placement
+        track: 1, // Audio goes to track 1
         timelineOptions: {
           color: "rgb(133, 179, 59)",
         },
@@ -947,7 +947,7 @@ export class ElementControl extends LitElement {
       localpath: path,
       filetype: "audio",
       speed: 1,
-      track: 0, // Initialize track property for row placement
+      track: 1, // Audio goes to track 1
       timelineOptions: {
         color: "rgb(133, 179, 59)",
       },
@@ -1029,33 +1029,41 @@ export class ElementControl extends LitElement {
         `<element-control-asset element-id="${elementId}" element-filetype="audio"></element-control-asset>`,
       );
 
-      let audio = element.querySelector("audio");
-      let secondsOfRelativeTime =
-        ((this.timeline[elementId].startTime as number) - this.progressTime) /
-        1000;
+      // Get the element again after insertion since insertAdjacentHTML doesn't return the element
+      const newElement: any = document.getElementById(`element-${elementId}`);
+      if (newElement) {
+        let audio = newElement.querySelector("audio");
+        if (audio) {
+          let secondsOfRelativeTime =
+            ((this.timeline[elementId].startTime as number) - this.progressTime) /
+            1000;
 
-      audio.currentTime = secondsOfRelativeTime;
+          audio.currentTime = secondsOfRelativeTime;
+        }
+      }
     } else {
       let audio = element.querySelector("audio");
-      let secondsOfRelativeTime =
-        -((this.timeline[elementId].startTime as number) - this.progressTime) /
-        1000;
+      if (audio) {
+        let secondsOfRelativeTime =
+          -((this.timeline[elementId].startTime as number) - this.progressTime) /
+          1000;
 
-      if (
-        !!(
-          audio.currentTime > 0 &&
-          !audio.paused &&
-          !audio.ended &&
-          audio.readyState > 2
-        )
-      ) {
-      } else {
-        audio.currentTime = secondsOfRelativeTime;
-
-        if (this.isPaused) {
-          audio.pause();
+        if (
+          !!(
+            audio.currentTime > 0 &&
+            !audio.paused &&
+            !audio.ended &&
+            audio.readyState > 2
+          )
+        ) {
         } else {
-          audio.play();
+          audio.currentTime = secondsOfRelativeTime;
+
+          if (this.isPaused) {
+            audio.pause();
+          } else {
+            audio.play();
+          }
         }
       }
 

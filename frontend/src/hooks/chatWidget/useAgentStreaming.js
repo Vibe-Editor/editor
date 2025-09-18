@@ -24,10 +24,8 @@ export const useAgentStreaming = () => {
         return "Concept generation running - Analyzing research data and creating multiple creative video concepts";
       case "generate_segmentation":
         return "Script generation running - Breaking down your concept into detailed segments with visuals and narration";
-      case "generate_image_with_approval":
-        return "Image generation running - Creating visual content for each script segment using AI";
       case "generate_video_with_approval":
-        return "Video generation running - Converting images into dynamic video content with animations";
+        return "Video generation running - Creating dynamic video content directly from text prompts";
       default:
         return `Agent processing - ${toolName}`;
     }
@@ -41,10 +39,8 @@ export const useAgentStreaming = () => {
         return "Concept generation approval - Ready to create multiple video concepts from research data";
       case "generate_segmentation":
         return "Script generation approval - Ready to break down your concept into detailed segments";
-      case "generate_image_with_approval":
-        return "Image generation approval - Ready to create visual content for each script segment";
       case "generate_video_with_approval":
-        return "Video generation approval - Ready to convert images into dynamic video content";
+        return "Video generation approval - Ready to create dynamic video content from text prompts";
       default:
         return `Approval required - ${toolName}`;
     }
@@ -58,8 +54,6 @@ export const useAgentStreaming = () => {
         return "Concept generation completed - Multiple video concepts created and ready for selection";
       case "generate_segmentation":
         return "Script generation completed - Detailed segments with visuals and narration ready";
-      case "generate_image_with_approval":
-        return "Image generation completed - Visual content created for all script segments";
       case "generate_video_with_approval":
         return "Video generation completed - Dynamic video content ready for timeline";
       default:
@@ -75,8 +69,6 @@ export const useAgentStreaming = () => {
         return "Approved concept generation to create video ideas";
       case "generate_segmentation":
         return "Approved script generation to create detailed segments";
-      case "generate_image_with_approval":
-        return "Approved image generation for visual content";
       case "generate_video_with_approval":
         return "Approved video generation to create dynamic content";
       default:
@@ -84,51 +76,11 @@ export const useAgentStreaming = () => {
     }
   }, []);
 
-  // Handle individual image completion from log messages
-  const handleIndividualImageCompletion = useCallback(
-    async (segmentId, s3Key, imageData, setGeneratedImages, setAllUserMessages) => {
-      try {
-        console.log(
-          `Processing individual image completion for segment ${segmentId}`,
-        );
-
-        // Convert S3 key to CloudFront URL
-        const imageUrl = await s3Api.downloadImage(s3Key);
-        console.log(`Generated image URL for segment ${segmentId}:`, imageUrl);
-
-        // Update generated images immediately
-        setGeneratedImages((prev) => {
-          const newImages = { ...prev, [segmentId]: imageUrl };
-          console.log("Updated generated images (individual):", newImages);
-          return newImages;
-        });
-
-        // Update agent activity
-        setAgentActivity(`Image completed for segment ${segmentId}`);
-      } catch (error) {
-        console.error(
-          `Failed to process image for segment ${segmentId}:`,
-          error,
-        );
-
-        // Add error message to chat
-        setAllUserMessages((prev) => [
-          ...prev,
-          {
-            id: `image-error-${segmentId}-${Date.now()}`,
-            content: `Failed to process image for segment ${segmentId}`,
-            timestamp: Date.now(),
-            type: "error",
-          },
-        ]);
-      }
-    },
-    [],
-  );
+  // Removed handleIndividualImageCompletion as it's not used in text-to-video workflow
 
   // Handle individual video completion from log messages
   const handleIndividualVideoCompletion = useCallback(
-    async (segmentId, s3Key, videoData, setGeneratedVideos, setAllUserMessages, selectedProject) => {
+    async (segmentId, s3Key, videoData, setGeneratedVideos, setAllUserMessages) => {
       try {
         console.log(
           `Processing individual video completion for segment ${segmentId}`,
@@ -152,8 +104,7 @@ export const useAgentStreaming = () => {
           return updated;
         });
 
-        // Update agent activity
-        setAgentActivity(`Video completed for segment ${segmentId}`);
+        // Video completed - no activity message needed
 
         // 🎯 TRIGGER CHAT SCROLL: Dispatch event to trigger chat scroll to bottom
         setTimeout(() => {
@@ -198,17 +149,24 @@ export const useAgentStreaming = () => {
         ]);
       }
     },
-    [],
+    [setStoredVideosMap],
   );
 
   const handleStreamMessage = useCallback(async (message, callbacks = {}) => {
     const {
       setAllUserMessages,
-      setGeneratedImages,
       setGeneratedVideos,
-      selectedProject,
       handleToolResult,
     } = callbacks;
+
+    console.log('📨 handleStreamMessage received:', {
+      type: message.type,
+      messageKeys: Object.keys(message),
+      dataKeys: message.data ? Object.keys(message.data) : 'no data',
+      hasScripts: !!(message.data?.scripts || message.scripts),
+      hasConcepts: !!(message.data?.concepts || message.concepts),
+      messageType: message.type
+    });
 
     setStreamMessages((prev) => [...prev, message]);
 
@@ -216,22 +174,6 @@ export const useAgentStreaming = () => {
       case "log": {
         // Update agent activity with log message if it contains useful info
         const logMessage = message.data.message || message.data;
-
-        // Handle individual image completion in log messages (similar to videos)
-        if (message.data?.ImageData?.s3_key && message.data?.segmentId) {
-          console.log("Individual image completed:", message.data.ImageData);
-          const segmentId = message.data.segmentId;
-          const s3Key = message.data.ImageData.s3_key;
-
-          // Process individual image completion
-          handleIndividualImageCompletion(
-            segmentId,
-            s3Key,
-            message.data.ImageData,
-            setGeneratedImages,
-            setAllUserMessages,
-          );
-        }
 
         // Handle individual video completion in log messages
         if (message.data?.VideoData?.s3_key && message.data?.segmentId) {
@@ -246,36 +188,7 @@ export const useAgentStreaming = () => {
             message.data.VideoData,
             setGeneratedVideos,
             setAllUserMessages,
-            selectedProject,
           );
-        }
-
-        // 🎯 CHECK FOR IMAGE BATCH COMPLETION: Look for completion summary messages
-        if (
-          typeof logMessage === "string" &&
-          logMessage.includes("Image generation") &&
-          logMessage.includes("completed:")
-        ) {
-          console.log("Image batch completion detected:", logMessage);
-
-          // Extract counts from message like "Image generation completed: 5 success, 0 failed"
-          const successMatch = logMessage.match(/(\d+)\s+success/);
-          const successCount = successMatch ? parseInt(successMatch[1]) : 0;
-
-          if (successCount > 0) {
-            console.log(`Detected ${successCount} images completed`);
-
-            // Add message about image completion
-            setAllUserMessages((prev) => [
-              ...prev,
-              {
-                id: `agent-images-batch-${Date.now()}`,
-                content: `Image generation complete! Generated ${successCount} images successfully.`,
-                timestamp: Date.now(),
-                type: "system",
-              },
-            ]);
-          }
         }
 
         // 🎯 CHECK FOR VIDEO BATCH COMPLETION: Look for completion summary messages
@@ -291,20 +204,9 @@ export const useAgentStreaming = () => {
           const successCount = successMatch ? parseInt(successMatch[1]) : 0;
 
           if (successCount > 0) {
-            console.log(
-              `Detected ${successCount} videos completed`,
-            );
+            console.log(`Detected ${successCount} videos completed`);
 
-            // Add message about video completion (without auto-append)
-            setAllUserMessages((prev) => [
-              ...prev,
-              {
-                id: `agent-videos-complete-${Date.now()}`,
-                content: `Video generation complete! ${successCount} videos are ready for timeline.`,
-                timestamp: Date.now(),
-                type: "system",
-              },
-            ]);
+            // Video batch completed - no message needed
 
             // 🎯 TRIGGER CHAT SCROLL: Scroll to bottom to show completion message
             setTimeout(() => {
@@ -320,6 +222,7 @@ export const useAgentStreaming = () => {
             }, 100); // Small delay to ensure message is rendered
           }
         }
+        
         if (typeof logMessage === "string") {
           setAgentActivity(logMessage);
         }
@@ -355,6 +258,7 @@ export const useAgentStreaming = () => {
 
         // Add progress updates to chat
         if (message.data.message) {
+          console.log("Progress update:", message.data.message);
         }
         break;
 
@@ -397,36 +301,32 @@ export const useAgentStreaming = () => {
           return [...prev, newApproval];
         });
 
-        // Handle approval based on tool type
-        await handleToolApproval(approvalId, toolName, parsedArgs);
+        // Handle approval based on tool type (auto-approve for now)
+        console.log("Approval required for:", toolName, "with args:", parsedArgs);
         break;
       }
 
       case "result": {
         // Debug the message data to understand the structure
         console.log('🔍 Result message data:', message.data);
+        console.log('🔍 Full message structure:', message);
+        console.log('🔍 Message keys:', Object.keys(message));
         
         const completeMessage = getToolCompleteMessage(
-          message.data.toolName || message.data.tool_name || "operation",
+          message.data?.toolName || message.data?.tool_name || message.toolName || "operation",
         );
         setAgentActivity(completeMessage);
         setStreamingProgress(null); // Clear progress
 
-        // Add completion message to chat
-        setAllUserMessages((prev) => [
-          ...prev,
-          {
-            id: `agent-complete-${Date.now()}`,
-            content: completeMessage,
-            timestamp: Date.now(),
-            type: "system",
-          },
-        ]);
+        // Tool completed - no message needed
 
         // Add small delay to ensure completion message is processed before tool result
         if (handleToolResult) {
+          console.log('🔄 Calling handleToolResult with message.data:', message.data);
+          console.log('🔄 Full message being passed:', message);
           setTimeout(async () => {
-            await handleToolResult(message.data);
+            // Pass the full message instead of just message.data in case data is empty
+            await handleToolResult(message.data || message);
           }, 50); // Small delay to ensure message ordering
         }
         break;
@@ -438,16 +338,7 @@ export const useAgentStreaming = () => {
         setStreamingProgress(null);
         setIsStreaming(false);
 
-        // Add final completion message to chat
-        setAllUserMessages((prev) => [
-          ...prev,
-          {
-            id: `agent-task-complete-${Date.now()}`,
-            content: taskCompleteMessage,
-            timestamp: Date.now(),
-            type: "system",
-          },
-        ]);
+        // Task completed - no message needed
 
         // Clear activity after a delay
         setTimeout(() => setAgentActivity(null), 3000);
@@ -477,7 +368,7 @@ export const useAgentStreaming = () => {
         // Unknown message type - silently ignore
         break;
     }
-  }, [getToolStartMessage, getApprovalMessage, getToolCompleteMessage, handleIndividualImageCompletion, handleIndividualVideoCompletion]);
+  }, [getToolStartMessage, getApprovalMessage, getToolCompleteMessage, handleIndividualVideoCompletion]);
 
   const handleToolApproval = useCallback(async (approvalId, toolName, args) => {
     console.log("Tool approval required:", { approvalId, toolName, args });
@@ -563,10 +454,12 @@ export const useAgentStreaming = () => {
                 if (line.startsWith("data: ")) {
                   try {
                     const jsonData = line.slice(6).trim();
+                    console.log('🔍 Raw JSON data received:', jsonData);
                     const data = JSON.parse(jsonData);
+                    console.log('📦 Parsed stream data:', data);
                     await handleStreamMessage(data, callbacks);
                   } catch (parseError) {
-                    console.error("Error parsing stream message:", parseError);
+                    console.error("Error parsing stream message:", parseError, "Raw data:", line);
                   }
                 }
               }
@@ -602,7 +495,7 @@ export const useAgentStreaming = () => {
   }, [currentReader]);
 
   const approveToolExecution = useCallback(
-    async (approvalId, additionalData, user, selectedProject, selectedConcept, selectedScript, generatedImages, selectedConceptModel, selectedScriptModel, selectedImageModel, selectedVideoModel, setAllUserMessages, setError) => {
+    async (approvalId, additionalData, user, selectedProject, selectedConcept, selectedScript, selectedConceptModel, selectedScriptModel, selectedVideoModel, setAllUserMessages, setError) => {
       console.log('🚀 approveToolExecution called with:', { approvalId, additionalData, user: user?.email, projectId: selectedProject?.id });
       try {
         // Find the approval to get tool context
@@ -624,29 +517,31 @@ export const useAgentStreaming = () => {
           ]);
         }
 
-        // Prepare specific data based on tool type
+        // Prepare specific data based on tool type - matching the backend DTO structure
         if (!additionalData && approval) {
           switch (approval.toolName) {
+            case "get_web_info":
+              // For web info - match DTO exactly
+              finalAdditionalData = {
+                prompt: approval.arguments?.prompt || null,
+                projectId: selectedProject?.id || approval.arguments?.projectId || null,
+              };
+              break;
+
             case "generate_concepts_with_approval":
               // For concept generation - match DTO exactly
               finalAdditionalData = {
                 web_info: approval.arguments?.web_info || null,
                 prompt: approval.arguments?.prompt || null,
-                projectId:
-                  selectedProject?.id || approval.arguments?.projectId || null,
-                model:
-                  selectedConceptModel ||
-                  approval.arguments?.model ||
-                  "gemini-2.0-flash-exp",
+                projectId: selectedProject?.id || approval.arguments?.projectId || null,
+                model: selectedConceptModel || approval.arguments?.model || "gemini-2.0-flash-exp",
               };
               break;
 
             case "generate_segmentation": {
               // For segmentation - check if concept is selected first
               if (!selectedConcept) {
-                setError(
-                  "Please select a concept first before generating segmentation",
-                );
+                setError("Please select a concept first before generating segmentation");
                 return;
               }
               // For segmentation - match DTO exactly and ensure we use selected concept
@@ -662,103 +557,38 @@ export const useAgentStreaming = () => {
                 prompt: approval.arguments?.prompt || null,
                 concept: selectedConcept.title,
                 negative_prompt: approval.arguments?.negative_prompt || null,
-                projectId:
-                  selectedProject?.id || approval.arguments?.projectId || null,
+                projectId: selectedProject?.id || approval.arguments?.projectId || null,
                 model: mapScriptModelToBackend(
-                  selectedScriptModel ||
-                    approval.arguments?.model ||
-                    "gemini-2.0-flash-exp",
+                  selectedScriptModel || approval.arguments?.model || "gemini-2.0-flash-exp",
                 ),
               };
-              console.log(
-                "🎯 Using selected concept for segmentation:",
-                selectedConcept.title,
-              );
-              console.log(
-                "🎯 Using script model for segmentation:",
-                selectedScriptModel,
-              );
+              console.log("🎯 Using selected concept for segmentation:", selectedConcept.title);
+              console.log("🎯 Using script model for segmentation:", selectedScriptModel);
               break;
             }
 
-            case "generate_image_with_approval":
-              // For image generation - match DTO exactly
-              finalAdditionalData = {
-                segments: selectedScript?.segments || null,
-                art_style:
-                  selectedScript?.artStyle ||
-                  approval.arguments?.art_style ||
-                  "realistic",
-                model:
-                  selectedImageModel ||
-                  approval.arguments?.model ||
-                  "flux-1.1-pro",
-                projectId:
-                  selectedProject?.id || approval.arguments?.projectId || null,
-                segmentId: "default",
-              };
-              break;
-
-            case "get_web_info":
-              // For web info - match DTO exactly
-              finalAdditionalData = {
-                prompt: approval.arguments?.prompt || null,
-                projectId:
-                  selectedProject?.id || approval.arguments?.projectId || null,
-              };
-              break;
-
             case "generate_video_with_approval": {
-              // For video generation - check if we have images and script first
-              if (
-                !selectedScript?.segments ||
-                Object.keys(generatedImages).length === 0
-              ) {
-                setError(
-                  "Please ensure images are generated first before generating videos",
-                );
+              // For video generation - check if we have script first (no image dependency for text-to-video)
+              if (!selectedScript?.segments) {
+                setError("Please ensure a script is selected first before generating videos");
                 return;
               }
 
-              // Prepare segments with imageS3Key from generated images
-              const videoSegments = selectedScript.segments
-                .filter((segment) => generatedImages[segment.id]) // Only segments with images
-                .map((segment) => {
-                  // Extract S3 key from CloudFront URL
-                  const imageUrl = generatedImages[segment.id];
-                  let imageS3Key = null;
-
-                  if (imageUrl && imageUrl.includes("cloudfront.net/")) {
-                    const urlParts = imageUrl.split("cloudfront.net/");
-                    if (urlParts.length > 1) {
-                      imageS3Key = urlParts[1];
-                    }
-                  }
-
-                  return {
-                    id: segment.id,
-                    animation_prompt: segment.animation || segment.visual,
-                    imageS3Key: imageS3Key,
-                  };
-                });
+              // Prepare segments for text-to-video generation (no image dependency)
+              const videoSegments = selectedScript.segments.map((segment) => {
+                return {
+                  id: segment.id,
+                  animation_prompt: segment.animation || segment.visual || segment.narration,
+                };
+              });
 
               finalAdditionalData = {
                 segments: videoSegments,
-                art_style:
-                  selectedScript?.artStyle ||
-                  approval.arguments?.art_style ||
-                  "realistic",
-                model:
-                  selectedVideoModel ||
-                  approval.arguments?.model ||
-                  "gen4_turbo",
-                projectId:
-                  selectedProject?.id || approval.arguments?.projectId || null,
+                art_style: selectedScript?.artStyle || approval.arguments?.art_style || "realistic",
+                model: selectedVideoModel || approval.arguments?.model || "veo3",
+                projectId: selectedProject?.id || approval.arguments?.projectId || null,
               };
-              console.log(
-                "🎬 Prepared video generation data:",
-                finalAdditionalData,
-              );
+              console.log("🎬 Prepared text-to-video generation data:", finalAdditionalData);
               break;
             }
 
@@ -768,14 +598,13 @@ export const useAgentStreaming = () => {
           }
         }
 
-        console.log("Approving tool with data:", {
+        console.log("✅ Approving tool with data:", {
           approvalId,
           toolName: approval?.toolName,
           finalAdditionalData,
           currentModels: {
             concept: selectedConceptModel,
             script: selectedScriptModel,
-            image: selectedImageModel,
             video: selectedVideoModel,
           },
         });
@@ -792,8 +621,8 @@ export const useAgentStreaming = () => {
           prev.filter((approval) => approval.id !== approvalId),
         );
       } catch (error) {
-        console.error("Error approving tool:", error);
-        setError("Failed to approve tool execution");
+        console.error("❌ Error approving tool:", error);
+        setError(`Failed to approve tool execution: ${error.message}`);
       }
     },
     [pendingApprovals, getToolApprovalConfirmationMessage],

@@ -1,36 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ConceptSelection from "./ConceptSelection";
 import ScriptSelection from "./ScriptSelection";
 import MediaGeneration from "./MediaGeneration";
 import TimelineButton from "./TimelineButton";
 import VerboseAgentLoader from "./VerboseAgentLoader";
+import AudioGeneration from "./AudioGeneration";
 
-// Dynamic image generation component that always shows current state
-const ImageGenerationComponent = ({ chatFlow, onImageClick }) => {
-  const hasImages = Object.keys(chatFlow.generatedImages || {}).length > 0;
-  const isGenerating = chatFlow.loading && chatFlow.selectedScript && Object.keys(chatFlow.generatedImages || {}).length === 0;
-  return (
-    <div>
-      <div className='text-gray-100 text-sm mb-4'>
-        {hasImages
-          ? "🖼️ Generated Images:"
-          : isGenerating
-          ? "🎨 Generating Images..."
-          : "🎨 Ready to generate images"}
-      </div>
-      <MediaGeneration
-        type='image'
-        generatedImages={chatFlow.generatedImages || {}}
-        generationProgress={chatFlow.generationProgress}
-        onImageClick={onImageClick}
-        loading={isGenerating}
-        onImagesGenerated={() => {
-          // Images generated - no automatic prompt setting
-        }}
-      />
-    </div>
-  );
-};
 
 // Dynamic video generation component that always shows current state
 const VideoGenerationComponent = ({
@@ -40,7 +15,7 @@ const VideoGenerationComponent = ({
   onAddSingleVideo,
 }) => {
   const hasVideos = Object.keys(combinedVideosMap || {}).length > 0;
-  const isGeneratingVideos = chatFlow.loading && Object.keys(chatFlow.generatedImages || {}).length > 0 && Object.keys(chatFlow.generatedVideos || {}).length === 0;
+  const isGeneratingVideos = chatFlow.loading && chatFlow.selectedScript && Object.keys(chatFlow.generatedVideos || {}).length === 0;
 
   console.log('VideoGenerationComponent render:', { 
     hasVideos, 
@@ -60,7 +35,6 @@ const VideoGenerationComponent = ({
       </div>
       <MediaGeneration
         type='video'
-        generatedImages={chatFlow.generatedImages || {}}
         combinedVideosMap={combinedVideosMap || {}}
         generationProgress={chatFlow.generationProgress}
         onVideoClick={onVideoClick}
@@ -73,10 +47,11 @@ const VideoGenerationComponent = ({
 
 const ChatMessages = ({
   chatFlow,
-  onImageClick,
   onVideoClick,
   onAddSingleVideo,
   sendVideosToTimeline,
+  sendAudiosToTimeline,
+  addSingleAudioToTimeline,
   combinedVideosMap,
   currentPrompt = "",
 }) => {
@@ -104,10 +79,15 @@ const ChatMessages = ({
     "veo3": { label: "veo3", tokens: "37", time: "5" },
   };
 
-  // Get available models based on approval tool type (copied from InputArea logic)
-  const getAvailableModelsForApproval = (toolName) => {
-    // Initial concept generation - only Gemini 2.5 Flash
-    if (toolName === 'get_web_info' || toolName === 'generate_concepts_with_approval') {
+  // Get available models based on approval tool type (updated for text-to-video workflow)
+  const getAvailableModelsForApproval = useCallback((toolName) => {
+    // Web research - only Gemini 2.5 Flash
+    if (toolName === 'get_web_info') {
+      return [{ value: "gpt-2.5", ...modelData["gpt-2.5"] }];
+    }
+
+    // Concept generation - only Gemini 2.5 Flash
+    if (toolName === 'generate_concepts_with_approval') {
       return [{ value: "gpt-2.5", ...modelData["gpt-2.5"] }];
     }
 
@@ -119,48 +99,38 @@ const ChatMessages = ({
       ];
     }
 
-    // Image generation after script selection - Recraft default, Imagen option
-    if (toolName === 'generate_image_with_approval') {
-      return [
-        { value: "recraft-v3", ...modelData["recraft-v3"] },
-        { value: "imagen", ...modelData["imagen"] },
-      ];
-    }
-
-    // Video generation after image generation - Runway default, Kling and veo3 options
+    // Video generation after script selection - veo3 default, Runway and Kling options
     if (toolName === 'generate_video_with_approval') {
       return [
+        { value: "veo3", ...modelData["veo3"] },
         { value: "gen4_turbo", ...modelData["gen4_turbo"] },
         { value: "kling-v2.1-master", ...modelData["kling-v2.1-master"] },
-        { value: "veo3", ...modelData["veo3"] },
       ];
     }
 
     // Default models for other cases
     return [{ value: "gpt-2.5", ...modelData["gpt-2.5"] }];
-  };
+  }, [modelData]);
 
   // Handle model selection for approval
-  const handleApprovalModelSelect = (modelValue, toolName) => {
+  const handleApprovalModelSelect = (modelValue) => {
     setSelectedApprovalModel(modelValue);
     setIsApprovalDropdownOpen(false);
 
-    // Update chatFlow immediately when model changes (same logic as InputArea)
+    // Update chatFlow immediately when model changes (updated for text-to-video workflow)
     if (chatFlow) {
-      if (modelValue === "recraft-v3" || modelValue === "imagen") {
-        chatFlow.setSelectedImageModel(modelValue);
+      if (modelValue === "veo3") {
+        chatFlow.setSelectedVideoModel("veo3");
       } else if (modelValue === "gen4_turbo") {
         chatFlow.setSelectedVideoModel("gen4_turbo");
       } else if (modelValue === "kling-v2.1-master") {
         chatFlow.setSelectedVideoModel("kling-v2.1-master");
-      } else if (modelValue === "veo3") {
-        chatFlow.setSelectedVideoModel("veo3");
       } else if (modelValue === "gemini-pro") {
         chatFlow.setSelectedScriptModel("gemini-pro");
       } else if (modelValue === "gemini-flash") {
         chatFlow.setSelectedScriptModel("gemini-flash");
       } else if (modelValue === "gpt-2.5") {
-        chatFlow.setSelectedScriptModel("gemini-2.0-flash-exp");
+        chatFlow.setSelectedConceptModel("gemini-2.0-flash-exp");
       }
     }
   };
@@ -188,7 +158,7 @@ const ChatMessages = ({
         setSelectedApprovalModel(availableModels[0].value);
       }
     }
-  }, [chatFlow.pendingApprovals]);
+  }, [chatFlow.pendingApprovals, getAvailableModelsForApproval]);
 
   // Track concept selection state
   useEffect(() => {
@@ -286,7 +256,16 @@ const ChatMessages = ({
     
     // Add concept selection component - show if concepts exist OR if we're on step 1+
     if (chatFlow.concepts && chatFlow.concepts.length > 0) {
-      const conceptTimestamp = conceptCompletionMessage ? conceptCompletionMessage.timestamp + 100 : Date.now();
+      // Detect if this is a history project
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
+      // For history projects, ensure concept appears first (before everything else)
+      const conceptTimestamp = conceptCompletionMessage ? 
+        conceptCompletionMessage.timestamp + 100 : 
+        (isHistoryProject ? 
+          Date.now() - 2000 : // History: before everything else
+          Date.now()); // Generation: normal timing
       orderedMessages.push({
         id: "concept-request",
         type: "system",
@@ -330,8 +309,17 @@ const ChatMessages = ({
     if ((chatFlow.scripts && (chatFlow.scripts.response1 || chatFlow.scripts.response2)) || 
         (chatFlow.selectedScript && chatFlow.selectedScript.segments)) {
       
+      // Detect if this is a history project (has selectedScript but no scripts being generated)
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
       // Use the latest relevant completion message or fall back to current time
-      const scriptTimestamp = scriptCompletionMessage ? scriptCompletionMessage.timestamp + 100 : Date.now();
+      // For history projects, ensure script appears first (before videos)
+      const scriptTimestamp = scriptCompletionMessage ? 
+        scriptCompletionMessage.timestamp + 100 : 
+        (isHistoryProject ? 
+          (scriptApprovalMessage ? scriptApprovalMessage.timestamp + 200 : Date.now() - 1000) : // History: before videos
+          (scriptApprovalMessage ? scriptApprovalMessage.timestamp + 200 : Date.now() + 100)); // Generation: after approvals
       
       // Debug logging for script timestamp
       console.log('🔍 Script component timing:', {
@@ -369,35 +357,6 @@ const ChatMessages = ({
       });
     }
 
-    // Find image-related completion message timestamp
-    const imageApprovalMessage = chatFlow.allUserMessages?.find(msg => 
-      msg.content.includes('Approved: Approved image generation')
-    );
-    
-    const imageCompletionMessage = chatFlow.allUserMessages?.find(msg => 
-      msg.timestamp > (imageApprovalMessage?.timestamp || 0) && 
-      (msg.content.includes('Image generation completed') ||
-       msg.content.includes('operation completed successfully') ||
-       msg.content.includes('image generation') ||
-       (msg.content.includes('generated') && msg.content.includes('images')))
-    );
-
-    // Add image generation component - show if we have a selectedScript OR if we have generated images (for old projects)
-    if (chatFlow.selectedScript && chatFlow.selectedScript.segments) {
-      const imageTimestamp = imageCompletionMessage ? imageCompletionMessage.timestamp + 100 : Date.now();
-      orderedMessages.push({
-        id: "image-generation",
-        type: "system",
-        content: "",
-        component: (
-          <ImageGenerationComponent 
-            chatFlow={chatFlow}
-            onImageClick={onImageClick}
-          />
-        ),
-        timestamp: imageTimestamp,
-      });
-    }
 
     // Find video-related completion message timestamp
     const videoApprovalMessage = chatFlow.allUserMessages?.find(msg => 
@@ -412,11 +371,21 @@ const ChatMessages = ({
        (msg.content.includes('generated') && msg.content.includes('videos')))
     );
 
-    // Add video generation component - show if we have images OR if we have generated videos (for old projects)
-    if (Object.keys(chatFlow.generatedImages || {}).length > 0 || 
+    // Add video generation component - show if we have a selectedScript OR if we have generated videos (for old projects)
+    if ((chatFlow.selectedScript && chatFlow.selectedScript.segments) || 
         Object.keys(chatFlow.generatedVideos || {}).length > 0 ||
         Object.keys(chatFlow.storedVideosMap || {}).length > 0) {
-      const videoTimestamp = videoCompletionMessage ? videoCompletionMessage.timestamp + 100 : Date.now();
+      // Detect if this is a history project
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
+      // For history projects, ensure video appears after script component
+      const baseTime = Date.now();
+      const videoTimestamp = videoCompletionMessage ? 
+        videoCompletionMessage.timestamp + 100 : 
+        (isHistoryProject ? 
+          baseTime - 500 : // History: after script (which uses baseTime - 1000)
+          baseTime + 1000); // Generation: after approvals
       orderedMessages.push({
         id: "video-generation",
         type: "system",
@@ -433,22 +402,79 @@ const ChatMessages = ({
       });
     }
 
-    // Add timeline integration component
-    const canSendTimeline =
+    // Add audio generation component - show after video generation is complete
+    const hasGeneratedVideos = Object.keys(chatFlow.generatedVideos || {}).length > 0 ||
+      Object.keys(chatFlow.storedVideosMap || {}).length > 0;
+    
+    const showAudioGeneration = hasGeneratedVideos && chatFlow.selectedScript && chatFlow.selectedScript.segments;
+    
+    if (showAudioGeneration) {
+      // Detect if this is a history project
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
+      // For history projects, ensure audio appears after video component
+      const baseTime = Date.now();
+      const audioTimestamp = videoCompletionMessage ? 
+        videoCompletionMessage.timestamp + 200 : 
+        (isHistoryProject ? 
+          baseTime - 300 : // History: after video (which uses baseTime - 500)
+          baseTime + 1200); // Generation: after video (which uses baseTime + 1000)
+      
+      orderedMessages.push({
+        id: "audio-generation",
+        type: "system",
+        content: "",
+        component: (
+          <AudioGeneration
+            chatFlow={chatFlow}
+            onAddAudioToTimeline={sendAudiosToTimeline}
+            showApproval={chatFlow.showAudioApproval}
+            onApprove={(voiceId, voiceModel) => {
+              console.log('🎤 Audio generation approved:', { voiceId, voiceModel });
+              if (chatFlow.handleAudioApproval) {
+                chatFlow.handleAudioApproval(voiceId, voiceModel);
+              }
+            }}
+            onCancel={() => {
+              console.log('🎤 Audio generation cancelled');
+              if (chatFlow.cancelAudioApproval) {
+                chatFlow.cancelAudioApproval();
+              }
+            }}
+            addingAudioTimeline={chatFlow.addingAudioTimeline || false}
+          />
+        ),
+        timestamp: audioTimestamp,
+      });
+    }
+
+    // Add video timeline integration component (only for videos, not audio)
+    const canSendVideoTimeline =
       Object.keys(chatFlow.generatedVideos || {}).length > 0 ||
       Object.keys(chatFlow.storedVideosMap || {}).length > 0 ||
       Object.keys(combinedVideosMap || {}).length > 0;
 
-    if (canSendTimeline) {
-      const timelineTimestamp = videoCompletionMessage ? videoCompletionMessage.timestamp + 100 : Date.now();
+    if (canSendVideoTimeline) {
+      // Detect if this is a history project
+      const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+        (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+      
+      // For history projects, ensure timeline appears after video component but before audio
+      const baseTime = Date.now();
+      const timelineTimestamp = videoCompletionMessage ? 
+        videoCompletionMessage.timestamp + 200 : 
+        (isHistoryProject ? 
+          baseTime - 400 : // History: after video (which uses baseTime - 500) but before audio
+          baseTime + 1100); // Generation: after video (which uses baseTime + 1000) but before audio
       orderedMessages.push({
-        id: "timeline-integration",
+        id: "video-timeline-integration",
         type: "system",
         content: "",
         component: (
           <div>
             <TimelineButton
-              canSendTimeline={canSendTimeline}
+              canSendTimeline={canSendVideoTimeline}
               addingTimeline={chatFlow.addingTimeline}
               onSendToTimeline={sendVideosToTimeline}
               inConversation={true}
@@ -482,7 +508,7 @@ const ChatMessages = ({
     
     // 🎯 AUTO-SCROLL: If we have new video content, scroll to bottom
     const hasVideos = Object.keys(combinedVideosMap || {}).length > 0;
-    if (hasVideos && sortedMessages.some(msg => msg.id === "video-generation" || msg.id === "timeline-integration")) {
+    if (hasVideos && sortedMessages.some(msg => msg.id === "video-generation" || msg.id === "video-timeline-integration")) {
       setTimeout(() => {
         scrollToBottom();
       }, 200); // Delay to ensure video components are rendered
@@ -494,13 +520,15 @@ const ChatMessages = ({
     chatFlow.selectedConcept,
     chatFlow.scripts,
     chatFlow.selectedScript,
-    chatFlow.generatedImages,
     chatFlow.generatedVideos,
     chatFlow.storedVideosMap,
     chatFlow.addingTimeline,
+    chatFlow.generatedAudios,
+    chatFlow.audioGenerationLoading,
+    chatFlow.audioGenerationProgress,
+    chatFlow.showAudioApproval,
     combinedVideosMap,
     currentPrompt,
-    onImageClick,
     onVideoClick,
     onAddSingleVideo,
     sendVideosToTimeline,
@@ -519,9 +547,9 @@ const ChatMessages = ({
             className={`${
               message.id === "concept-request" ||
               message.id === "script-request" ||
-              message.id === "image-generation" ||
               message.id === "video-generation" ||
-              message.id === "timeline-integration"
+              message.id === "audio-generation" ||
+              message.id === "video-timeline-integration"
                 ? "w-full p-0" // Full width and no padding/background for component messages
                 : `max-w-[80%] p-2.5 text-white rounded-lg backdrop-blur-sm ${ 
                     message.type === "user" 
@@ -645,16 +673,10 @@ const ChatMessages = ({
                           <div>I can now create detailed script segmentation for the selected concept. This will break down your content into scenes with visual descriptions, narration, and animation prompts.</div>
                         </div>
                       )}
-                      {approval.toolName === 'generate_image_with_approval' && (
-                        <div>
-                          <div className='mb-2 text-cyan-300 font-medium'>Image Generation Ready</div>
-                          <div>I'm ready to generate high-quality images for each script segment. This will create visual assets that match your chosen art style and bring your script to life.</div>
-                        </div>
-                      )}
                       {approval.toolName === 'generate_video_with_approval' && (
                         <div>
                           <div className='mb-2 text-cyan-300 font-medium'>Video Generation Ready</div>
-                          <div>I'm ready to create dynamic videos from your generated images. This will add motion and animation to transform static images into engaging video content.</div>
+                          <div>I'm ready to create dynamic videos from your script segments. This will generate engaging video content based on your selected script.</div>
                         </div>
                       )}
                     </div>
@@ -718,7 +740,7 @@ const ChatMessages = ({
                               {availableModels.map((model) => (
                                 <div
                                   key={model.value}
-                                  onClick={() => handleApprovalModelSelect(model.value, approval.toolName)}
+                                  onClick={() => handleApprovalModelSelect(model.value)}
                                   className='px-3 py-2 cursor-pointer transition-all duration-200 flex flex-col sm:flex-row sm:items-center sm:justify-between group'
                                   style={{
                                     background:

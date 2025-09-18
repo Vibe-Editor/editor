@@ -36,15 +36,10 @@ function ChatWidgetSidebar({ open, setOpen }) {
   const nameInputRef = useRef(null);
 
   // Modal states
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [modalImageUrl, setModalImageUrl] = useState(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [modalVideoUrl, setModalVideoUrl] = useState(null);
   const [showRedoModal, setShowRedoModal] = useState(false);
   const [redoStepId, setRedoStepId] = useState(null);
-  const [redoImageModel, setRedoImageModel] = useState(
-    chatFlow.selectedImageModel,
-  );
   const [redoVideoModel, setRedoVideoModel] = useState(
     chatFlow.selectedVideoModel,
   );
@@ -68,13 +63,13 @@ function ChatWidgetSidebar({ open, setOpen }) {
     },
     {
       id: 4,
-      name: "Image Generation",
-      description: "Generate images for segments",
+      name: "Video Generation",
+      description: "Generate videos from script",
     },
     {
       id: 5,
-      name: "Video Generation",
-      description: "Generate videos from images",
+      name: "Audio Generation",
+      description: "Generate voice-over audio",
     },
   ];
 
@@ -228,8 +223,16 @@ function ChatWidgetSidebar({ open, setOpen }) {
         return !chatFlow.selectedScript || !chatFlow.selectedScript.segments;
       if (stepId === 4)
         return !chatFlow.selectedScript || !chatFlow.selectedScript.segments;
-      if (stepId === 5)
-        return Object.keys(chatFlow.generatedImages).length === 0;
+      if (stepId === 5) {
+        // Check if this is a history project
+        const isHistoryProject = chatFlow.selectedScript && chatFlow.selectedScript.segments && 
+          (!chatFlow.scripts || (!chatFlow.scripts.response1 && !chatFlow.scripts.response2));
+        
+        return isHistoryProject || 
+               !chatFlow.selectedScript || 
+               !chatFlow.selectedScript.segments || 
+               Object.keys(chatFlow.generatedVideos || {}).length === 0;
+      }
       return true;
     },
     [
@@ -237,7 +240,8 @@ function ChatWidgetSidebar({ open, setOpen }) {
       chatFlow.concepts,
       chatFlow.selectedConcept,
       chatFlow.selectedScript,
-      chatFlow.generatedImages,
+      chatFlow.scripts,
+      chatFlow.generatedVideos,
     ],
   );
 
@@ -257,10 +261,11 @@ function ChatWidgetSidebar({ open, setOpen }) {
             await chatFlow.runScriptGeneration(prompt);
             break;
           case 4:
-            await chatFlow.runImageGeneration();
+            await chatFlow.runVideoGeneration();
             break;
           case 5:
-            await chatFlow.runVideoGeneration();
+            // Trigger audio generation approval
+            chatFlow.triggerAudioApproval();
             break;
         }
       }
@@ -272,10 +277,9 @@ function ChatWidgetSidebar({ open, setOpen }) {
     async (stepId) => {
       if (chatFlow.loading) return;
 
-      // For steps that need model selection, show modal
-      if (stepId === 4 || stepId === 5) {
+      // For video generation step that needs model selection, show modal
+      if (stepId === 4) {
         setRedoStepId(stepId);
-        setRedoImageModel(chatFlow.selectedImageModel);
         setRedoVideoModel(chatFlow.selectedVideoModel);
         setShowRedoModal(true);
         return;
@@ -291,6 +295,10 @@ function ChatWidgetSidebar({ open, setOpen }) {
         case 2:
           await chatFlow.runScriptGeneration(prompt);
           break;
+        case 5:
+          // Trigger audio generation approval for redo
+          chatFlow.triggerAudioApproval();
+          break;
       }
     },
     [chatFlow, prompt],
@@ -304,22 +312,17 @@ function ChatWidgetSidebar({ open, setOpen }) {
 
     // Update the main model selections with the redo selections
     if (redoStepId === 4) {
-      chatFlow.setSelectedImageModel(redoImageModel);
-    } else if (redoStepId === 5) {
       chatFlow.setSelectedVideoModel(redoVideoModel);
     }
 
     switch (redoStepId) {
       case 4:
-        await chatFlow.runImageGeneration();
-        break;
-      case 5:
         await chatFlow.runVideoGeneration();
         break;
     }
 
     setRedoStepId(null);
-  }, [chatFlow, redoStepId, redoImageModel, redoVideoModel]);
+  }, [chatFlow, redoStepId, redoVideoModel]);
 
   
 
@@ -401,20 +404,38 @@ function ChatWidgetSidebar({ open, setOpen }) {
     [chatFlow, timeline, combinedVideosMap],
   );
 
-  // Modal handlers
-  const handleImageClick = useCallback((imageUrl) => {
-    setModalImageUrl(imageUrl);
-    setShowImageModal(true);
-  }, []);
+  // Audio timeline functions
+  const sendAudiosToTimeline = useCallback(async () => {
+    if (chatFlow.addingAudioTimeline) return;
 
+    chatFlow.setAddingAudioTimeline(true);
+    const success = await timeline.sendAudiosToTimeline(
+      chatFlow.selectedScript,
+      chatFlow.generatedAudios || {},
+      chatFlow.setError,
+    );
+    chatFlow.setAddingAudioTimeline(false);
+  }, [chatFlow, timeline]);
+
+  const addSingleAudioToTimeline = useCallback(
+    async (segmentId) => {
+      if (chatFlow.addingAudioTimeline) return;
+
+      chatFlow.setAddingAudioTimeline(true);
+      const success = await timeline.addSingleAudioToTimeline(
+        segmentId,
+        chatFlow.generatedAudios || {},
+        chatFlow.setError,
+      );
+      chatFlow.setAddingAudioTimeline(false);
+    },
+    [chatFlow, timeline],
+  );
+
+  // Modal handlers
   const handleVideoClick = useCallback((videoUrl) => {
     setModalVideoUrl(videoUrl);
     setShowVideoModal(true);
-  }, []);
-
-  const closeImageModal = useCallback(() => {
-    setShowImageModal(false);
-    setModalImageUrl(null);
   }, []);
 
   const closeVideoModal = useCallback(() => {
@@ -511,10 +532,11 @@ function ChatWidgetSidebar({ open, setOpen }) {
               {/* Chat Messages */}
               <ChatMessages
                 chatFlow={chatFlow}
-                onImageClick={handleImageClick}
                 onVideoClick={handleVideoClick}
                 onAddSingleVideo={addSingleVideoToTimeline}
                 sendVideosToTimeline={sendVideosToTimeline}
+                sendAudiosToTimeline={sendAudiosToTimeline}
+                addSingleAudioToTimeline={addSingleAudioToTimeline}
                 combinedVideosMap={combinedVideosMap}
                 currentPrompt={prompt}
               />
@@ -632,16 +654,11 @@ function ChatWidgetSidebar({ open, setOpen }) {
 
       {/* All Modals */}
       <Modals
-        showImageModal={showImageModal}
-        modalImageUrl={modalImageUrl}
-        onCloseImageModal={closeImageModal}
         showVideoModal={showVideoModal}
         modalVideoUrl={modalVideoUrl}
         onCloseVideoModal={closeVideoModal}
         showRedoModal={showRedoModal}
         redoStepId={redoStepId}
-        redoImageModel={redoImageModel}
-        setRedoImageModel={setRedoImageModel}
         redoVideoModel={redoVideoModel}
         setRedoVideoModel={setRedoVideoModel}
         loading={chatFlow.loading}
