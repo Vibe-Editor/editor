@@ -133,12 +133,12 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenera
             />
           </div>
         ) : (
-          <div className="w-full h-56 flex flex-col items-center justify-center text-center space-y-3">
-            <h3 className="text-white text-xl font-semibold">Ready to generate script</h3>
-            <p className="text-gray-400">We have enough preferences to start crafting your Story Arc.</p>
+          <div className="w-full min-h-[70vh] flex flex-col items-center justify-center text-center space-y-3">
+            <h3 className="text-white text-4xl font-bold">Ready to generate script</h3>
+            <p className="text-gray-300 text-lg max-w-2xl">We have enough preferences to start crafting your Story Arc.</p>
             <button
               onClick={() => onGenerateScript && onGenerateScript()}
-              className="px-5 py-2 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors"
+              className="px-5 py-2 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-semibold text-lg transition-colors"
             >
               Generate Script
             </button>

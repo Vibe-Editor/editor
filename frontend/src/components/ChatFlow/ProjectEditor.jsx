@@ -402,7 +402,7 @@ const ProjectEditor = () => {
       {!showStoryArc &&
         projectEditor.currentStep === "preference_questions" &&
         projectEditor.questionsData && (
-          <div className='absolute bottom-[7.5rem] left-0 right-0 px-4 z-10'>
+          <div className='absolute bottom-[9rem] left-0 right-0 px-4 z-10'>
             <div className='w-full max-w-[54rem] mx-auto'>
               <div
                 className={`w-full h-1 rounded-full overflow-hidden ${
@@ -432,7 +432,7 @@ const ProjectEditor = () => {
 
       {/* Bottom Centered Input (visible throughout the flow until Generate Script) */}
       {!showStoryArc && (
-        <div className='w-full px-4 py-6 pb-6 flex items-center justify-center'>
+        <div className='absolute -bottom-4 left-0 right-0 px-4 py-6 pb-6 flex items-center justify-center z-9'>
           <div className='w-full max-w-4xl'>
             <div className='bg-gradient-to-t from-[#20272B]/50 to-[#000000]/30 rounded-2xl border-1 border-white/20 p-6 backdrop-blur-sm opacity-90'>
               {/* Input Row */}
