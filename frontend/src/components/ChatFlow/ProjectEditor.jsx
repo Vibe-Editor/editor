@@ -20,6 +20,9 @@ const ProjectEditor = () => {
   const resetProjectEditor = useProjectStore((state) => state.resetProjectEditor);
   const clearProjectEditorAfterSave = useProjectStore((state) => state.clearProjectEditorAfterSave);
   const setPreferenceVideos = useProjectStore((state) => state.setPreferenceVideos);
+  const creditBalance = useProjectStore((state) => state.creditBalance);
+  const fetchBalance = useProjectStore((state) => state.fetchBalance);
+  const loadingData = useProjectStore((state) => state.loadingData);
   
   const [inputValue, setInputValue] = useState('');
   const [showStoryArc, setShowStoryArc] = useState(false);
@@ -46,6 +49,12 @@ const ProjectEditor = () => {
       fetchQuestions();
     }
   }, [selectedProject]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchBalance(user.id);
+    }
+  }, [user?.id, fetchBalance]);
 
   useEffect(() => {
     if (showStoryArc) {
@@ -439,7 +448,9 @@ const ProjectEditor = () => {
                 stroke-linejoin="round"
               />
             </svg>
-            <span className="text-base">2000</span>
+            <span className="text-base">
+              {loadingData.balance ? "..." : Math.round(creditBalance)}
+            </span>
           </div>
         </div>
 
