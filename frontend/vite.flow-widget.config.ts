@@ -15,8 +15,14 @@ export default defineConfig({
     outDir: '../apps/app/dist/widget', // path relative to frontend
     emptyOutDir: false, // Don't empty the dir since chat widget is there too
     rollupOptions: {
-      // Bundle everything (including React) so we don't rely on globals
-      external: [],
+      // Use external React from first widget
+      external: ['react', 'react-dom'],
+      output: {
+        globals: {
+          'react': 'React',
+          'react-dom': 'ReactDOM'
+        }
+      }
     },
   },
 }); 

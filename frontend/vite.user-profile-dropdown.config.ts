@@ -16,8 +16,14 @@ export default defineConfig({
     outDir: '../apps/app/dist/widget', // path relative to frontend
     emptyOutDir: false, // Don't empty the directory since other widgets are there
     rollupOptions: {
-      // Bundle everything (including React) so we don't rely on globals
-      external: [],
+      // Use external React from first widget
+      external: ['react', 'react-dom'],
+      output: {
+        globals: {
+          'react': 'React',
+          'react-dom': 'ReactDOM'
+        }
+      }
     },
   },
 });
