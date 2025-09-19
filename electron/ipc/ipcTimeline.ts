@@ -34,13 +34,24 @@ export const ipcTimeline = {
 // -------------------- NEW handler addByUrl --------------------
 
 ipcMain.handle("extension:timeline:addByUrl", async (_evt, list: {id:number,url:string}[]) => {
+  console.log('🎬 Timeline received videos:', list);
+  
   const timeline:any = {};
   let cursor = 0;
 
-  for (let idx = 0; idx < list.length; idx++) {
-    const item = list[idx] as any;
+  // Sort the list by ID to ensure correct sequence in timeline
+  const sortedList = [...list].sort((a, b) => {
+    const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id).replace(/[^0-9]/g, '')) || 0;
+    const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id).replace(/[^0-9]/g, '')) || 0;
+    return idA - idB;
+  });
+  
+  console.log('🎬 Timeline sorted videos:', sortedList);
+
+  for (let idx = 0; idx < sortedList.length; idx++) {
+    const item = sortedList[idx] as any;
     const url = item.url;
-    const id = idx + 1;
+    const id = item.id || (idx + 1); // Use actual video ID if available, fallback to sequential
 
     if (!url) continue;
 
@@ -104,6 +115,7 @@ ipcMain.handle("extension:timeline:addByUrl", async (_evt, list: {id:number,url:
       localpath: finalPath,
       blob: "",
       priority: 0,
+      track: 0,
       startTime: cursor,
       duration,
       location: { x: 0, y: 0 },
@@ -142,6 +154,8 @@ ipcMain.handle("extension:timeline:addByUrl", async (_evt, list: {id:number,url:
 
 // NEW: ask user for destination directory, download videos there, then add to timeline
 ipcMain.handle("extension:timeline:addByUrlWithDir", async (_evt, list: {id:number,url:string}[]) => {
+  console.log('🎬 Timeline (with dir) received videos:', list);
+  
   // Open directory chooser
   const { dialog } = require("electron");
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -157,10 +171,19 @@ ipcMain.handle("extension:timeline:addByUrlWithDir", async (_evt, list: {id:numb
   const timeline: any = {};
   let cursor = 0;
 
-  for (let idx = 0; idx < list.length; idx++) {
-    const item = list[idx] as any;
+  // Sort the list by ID to ensure correct sequence in timeline
+  const sortedList = [...list].sort((a, b) => {
+    const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id).replace(/[^0-9]/g, '')) || 0;
+    const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id).replace(/[^0-9]/g, '')) || 0;
+    return idA - idB;
+  });
+  
+  console.log('🎬 Timeline (with dir) sorted videos:', sortedList);
+
+  for (let idx = 0; idx < sortedList.length; idx++) {
+    const item = sortedList[idx] as any;
     const url = (item as any).url;
-    const id = idx + 1; // enforce sequential IDs to avoid NaN issues
+    const id = item.id || (idx + 1); // Use actual video ID if available, fallback to sequential
 
     if (!url) continue;
 
@@ -227,6 +250,7 @@ ipcMain.handle("extension:timeline:addByUrlWithDir", async (_evt, list: {id:numb
       localpath: finalPath,
       blob: finalPath,
       priority: 0,
+      track: 0,
       startTime: cursor,
       duration,
       location: { x: 0, y: 0 },
@@ -320,6 +344,7 @@ ipcMain.handle("extension:timeline:addFromDir", async (_evt, dirPath: string) =>
       localpath: full,
       blob: "",
       priority: 0,
+      track: 0,
       startTime: cursor,
       duration,
       location: { x: 0, y: 0 },
