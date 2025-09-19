@@ -98,8 +98,6 @@
         "height": 380
       }
     },
-    "afterSign": "electron/notarize.js",
-    "afterAllArtifactBuild": "electron/afterAll.js",
     "win": {
       "target": [
         {

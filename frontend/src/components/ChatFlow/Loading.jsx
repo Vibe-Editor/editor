@@ -28,6 +28,9 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
   const templateSelections = useProjectStore((s) => s.templateSelections);
   const preferenceVideos = useProjectStore((s) => s.preferenceVideos || []);
   const generatedVideoResults = useProjectStore((s) => s.generatedVideoResults || []);
+  const creditBalance = useProjectStore((s) => s.creditBalance);
+  const loadingData = useProjectStore((s) => s.loadingData);
+  const fetchBalance = useProjectStore((s) => s.fetchBalance);
   
   // Timeline hook
   const timeline = useTimeline();
@@ -153,6 +156,13 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
     return STATUS_MESSAGES[index];
   }, [progress]);
 
+  // Fetch credit balance on component mount
+  useEffect(() => {
+    if (user?.id && fetchBalance) {
+      fetchBalance(user.id);
+    }
+  }, [user?.id, fetchBalance]);
+
   useEffect(() => {
     if (isCompleteExternal === true) {
       // External completion controls done state; stop internal timer updates
@@ -233,7 +243,7 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
         className='absolute inset-0'
         style={{
           background:
-            "radial-gradient(ellipse 40% 20% at center top 25%, #556771B2 0%, transparent 60%, transparent 100%)",
+            "radial-gradient(ellipse 40% 20% at center top 25%, #30DBCD 0%, transparent 60%, transparent 100%)",
         }}
       ></div>
 
@@ -242,7 +252,7 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
         className='absolute inset-0'
         style={{
           background:
-            "radial-gradient(ellipse 40% 20% at center bottom 25%, #556771B2 0%, transparent 60%, transparent 100%)",
+            "radial-gradient(ellipse 40% 20% at center bottom 25%, #30DBCD 0%, transparent 60%, transparent 100%)",
         }}
       ></div>
       {/* Header elements copied from ProjectEditor.jsx */}
@@ -284,7 +294,9 @@ const Loading = ({ onDone, isCompleteExternal = null, loadingProgress = null }) 
                 strokeLinejoin='round'
               />
             </svg>
-            <span className='text-base'>2000</span>
+            <span className='text-base'>
+              {loadingData?.balance ? "..." : (creditBalance || 0).toFixed(0)}
+            </span>
           </div>
         </div>
 
