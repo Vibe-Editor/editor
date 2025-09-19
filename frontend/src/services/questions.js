@@ -66,4 +66,36 @@ export const questionsApi = {
       throw error;
     }
   },
+
+  // Generate segments with preferences
+  generateSegmentsWithPreferences: async (projectId, preferences) => {
+    try {
+      const headers = await getAuthHeaders();
+      const { data } = await axiosInstance.post(
+        `/projects/${projectId}/generate-segments-with-preferences`,
+        preferences,
+        { headers },
+      );
+      return data;
+    } catch (error) {
+      console.error("Error in generateSegmentsWithPreferences:", error);
+      throw error;
+    }
+  },
+
+  // Generate basic concept
+  generateBasicConcept: async (projectId, conceptData) => {
+    try {
+      const headers = await getAuthHeaders();
+      const { data } = await axiosInstance.post(
+        `/projects/${projectId}/generate-basic-concept`,
+        conceptData,
+        { headers },
+      );
+      return data;
+    } catch (error) {
+      console.error("Error in generateBasicConcept:", error);
+      throw error;
+    }
+  },
 };

@@ -91,27 +91,80 @@ const ProjectEditor = () => {
     setProjectEditorStep('user_prompt');
   };
 
-  const handlePromptSubmit = () => {
+  const handlePromptSubmit = async () => {
     if (!inputValue.trim()) return;
     
-    setUserPrompt(inputValue);
+    const userPrompt = inputValue.trim();
+    setUserPrompt(userPrompt);
+    
+    // Add user message to chat
     setChatMessages([
       ...projectEditor.chatMessages,
       {
         id: projectEditor.chatMessages.length + 1,
         type: 'user',
-        content: inputValue,
+        content: userPrompt,
         timestamp: new Date()
       },
       {
         id: projectEditor.chatMessages.length + 2,
         type: 'bot',
-        content: 'Perfect! Now let me ask you a few questions to customize your video.',
+        content: 'Great! Let me create a concept for your video...',
         timestamp: new Date()
       }
     ]);
+    
     setInputValue('');
-    setProjectEditorStep('preference_questions');
+    
+    try {
+      if (!selectedProject?.id) {
+        console.error('No project selected');
+        return;
+      }
+
+      // Prepare the concept data
+      const conceptData = {
+        userPrompt: userPrompt,
+        videoType: projectEditor.videoTypeSelection?.id || 'talking_head'
+      };
+
+      console.log('Generating basic concept with data:', conceptData);
+      
+      // Call the new endpoint to generate basic concept
+      const result = await questionsApi.generateBasicConcept(selectedProject.id, conceptData);
+      console.log('Basic concept generated successfully:', result);
+      
+      // Update chat with success message
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: prev.length + 1,
+          type: 'bot',
+          content: 'Perfect! Now let me ask you a few questions to customize your video.',
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Move to preference questions step
+      setProjectEditorStep('preference_questions');
+      
+    } catch (error) {
+      console.error('Failed to generate basic concept:', error);
+      
+      // Update chat with error message
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: prev.length + 1,
+          type: 'bot',
+          content: 'I had trouble creating your concept, but let\'s continue with the questions to customize your video.',
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Still move to preference questions step even if concept generation fails
+      setProjectEditorStep('preference_questions');
+    }
   };
 
   const handlePreferenceAnswer = async (questionKey, answer) => {
@@ -209,7 +262,73 @@ const ProjectEditor = () => {
     const allAnswers = { ...projectEditor.preferenceAnswers };
     setIsGeneratingStory(true);
     setShowStoryArc(true);
-    await saveVideoPreferences(allAnswers);
+    
+    try {
+      if (!selectedProject?.id) {
+        console.error('No project selected');
+        return;
+      }
+
+      // Map the answers to the API format - extract only id values
+      const preferences = {
+        user_prompt: projectEditor.userPrompt,
+        video_type: projectEditor.videoTypeSelection?.id || 'talking_head',
+        visual_style: allAnswers.visual_style?.id || 'cool_corporate',
+        lighting_mood: allAnswers.mood_tone?.id || 'bright_minimal',
+        camera_style: allAnswers.camera_movement?.id || 'static_locked',
+        subject_focus: allAnswers.subject_focus?.id || 'person_vr',
+        location_environment: allAnswers.environment_space?.id || 'minimal_room'
+      };
+
+      console.log('Generating segments with preferences:', preferences);
+      
+      // Call the new endpoint to generate segments with preferences
+      const result = await questionsApi.generateSegmentsWithPreferences(selectedProject.id, preferences);
+      console.log('Segments generated successfully:', result);
+      
+      // Store the result for the StoryArc component
+      setStoryData(result.data);
+      setVideoPreferences(result);
+      
+      // Extract and preserve preference videos
+      const preferenceVideos = [];
+      if (allAnswers && typeof allAnswers === 'object') {
+        Object.values(allAnswers).forEach((ans) => {
+          if (preferenceVideos.length >= 2) return; // Only take first 2
+          const src = (ans?.s3_key || ans?.s3Key || '').trim();
+          if (src) preferenceVideos.push(src);
+        });
+      }
+      console.log('Extracted preference videos:', preferenceVideos);
+      setPreferenceVideos(preferenceVideos);
+      
+      // Clear the project editor state after successful generation
+      clearProjectEditorAfterSave();
+      
+      setChatMessages([
+        ...projectEditor.chatMessages,
+        {
+          id: projectEditor.chatMessages.length + 2,
+          type: 'bot',
+          content: 'Perfect! Your video segments have been generated with your preferences.',
+          timestamp: new Date()
+        }
+      ]);
+      
+    } catch (error) {
+      console.error('Failed to generate segments with preferences:', error);
+      setChatMessages([
+        ...projectEditor.chatMessages,
+        {
+          id: projectEditor.chatMessages.length + 2,
+          type: 'bot',
+          content: 'There was an issue generating your video segments. Please try again.',
+          timestamp: new Date()
+        }
+      ]);
+    } finally {
+      setIsGeneratingStory(false);
+    }
   };
 
   const handleClose = () => {
