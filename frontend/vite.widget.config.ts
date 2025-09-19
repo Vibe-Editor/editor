@@ -15,8 +15,14 @@ export default defineConfig({
     outDir: '../apps/app/dist/widget', // path relative to frontend
     emptyOutDir: true,
     rollupOptions: {
-      // Bundle everything (including React) so we don't rely on globals
-      external: [],
+      // Use external React 18 from CDN
+      external: ['react', 'react-dom'],
+      output: {
+        globals: {
+          'react': 'React',
+          'react-dom': 'ReactDOM'
+        }
+      }
     },
   },
 }); 

@@ -1420,16 +1420,7 @@ protected render() {
       "
     >
       <div
-        style="
-          background: #888;
-          width: ${this.fittingWidth}px;
-          height: ${this.fittingHeight}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 20px;
-          box-shadow: 0 0 8px #000a;
-        "
+        
       >
         <canvas
           id="elementPreviewCanvasRef"
