@@ -30,6 +30,7 @@ const ProjectEditor = () => {
   const [storyData, setStoryData] = useState(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [videoPreferences, setVideoPreferences] = useState(null);
+  const [isGeneratingConcept, setIsGeneratingConcept] = useState(false);
 
   // Get user data for avatar
   const { user } = useAuthStore();
@@ -124,6 +125,7 @@ const ProjectEditor = () => {
     ]);
     
     setInputValue('');
+    setIsGeneratingConcept(true);
     
     try {
       if (!selectedProject?.id) {
@@ -173,6 +175,8 @@ const ProjectEditor = () => {
       
       // Still move to preference questions step even if concept generation fails
       setProjectEditorStep('preference_questions');
+    } finally {
+      setIsGeneratingConcept(false);
     }
   };
 
@@ -349,6 +353,40 @@ const ProjectEditor = () => {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex items-center justify-center">
         <div className="text-white text-xl">No project selected</div>
+      </div>
+    );
+  }
+
+  // Show loading screen when generating concept
+  if (isGeneratingConcept) {
+    return (
+      <div className="w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex flex-col items-center justify-center">
+        <div className="text-center">
+          {/* Loading Animation */}
+          <div className="mb-8">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-white/20 border-t-[#94E7ED] rounded-full animate-spin mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-white/30 border-t-[#F9D312] rounded-full animate-spin"></div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Loading Text */}
+          <h2 className="text-white text-2xl font-semibold mb-4">
+            Creating your concept...
+          </h2>
+          <p className="text-gray-300 text-lg max-w-md mx-auto">
+            We're analyzing your idea and preparing the perfect questions to customize your video.
+          </p>
+          
+          {/* Progress Dots */}
+          <div className="flex justify-center mt-8 space-x-2">
+            <div className="w-2 h-2 bg-[#94E7ED] rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-[#94E7ED] rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+            <div className="w-2 h-2 bg-[#94E7ED] rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -572,9 +610,9 @@ const ProjectEditor = () => {
                       ? 'Answer the questions above, or add more details about your video...'
                       : 'Describe what you want to create...'
                   }
-                  disabled={projectEditor.currentStep !== 'user_prompt'}
+                  disabled={projectEditor.currentStep !== 'user_prompt' || isGeneratingConcept}
                   className={`flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none text-base ${
-                    projectEditor.currentStep !== 'user_prompt'
+                    projectEditor.currentStep !== 'user_prompt' || isGeneratingConcept
                       ? 'opacity-50 cursor-not-allowed'
                       : ''
                   }`}
@@ -675,13 +713,13 @@ const ProjectEditor = () => {
                   {/* Button 4 - Send */}
                   <div
                     onClick={
-                      projectEditor.currentStep === 'user_prompt'
+                      projectEditor.currentStep === 'user_prompt' && !isGeneratingConcept
                         ? handlePromptSubmit
                         : undefined
                     }
-                    disabled={!inputValue.trim() || projectEditor.currentStep !== 'user_prompt'}
+                    disabled={!inputValue.trim() || projectEditor.currentStep !== 'user_prompt' || isGeneratingConcept}
                     className={`text-white p-2 rounded-lg transition-colors flex items-center justify-center flex-shrink-0 hover:bg-white/10 ${
-                      projectEditor.currentStep === 'user_prompt'
+                      projectEditor.currentStep === 'user_prompt' && !isGeneratingConcept
                         ? 'cursor-pointer'
                         : 'opacity-50 cursor-not-allowed'
                     }`}
