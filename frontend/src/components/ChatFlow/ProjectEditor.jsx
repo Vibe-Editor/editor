@@ -23,6 +23,8 @@ const ProjectEditor = () => {
   const creditBalance = useProjectStore((state) => state.creditBalance);
   const fetchBalance = useProjectStore((state) => state.fetchBalance);
   const loadingData = useProjectStore((state) => state.loadingData);
+  const setConceptGenerated = useProjectStore((state) => state.setConceptGenerated);
+  const setIsGeneratingConcept = useProjectStore((state) => state.setIsGeneratingConcept);
   
   const [inputValue, setInputValue] = useState('');
   const [showStoryArc, setShowStoryArc] = useState(false);
@@ -30,7 +32,6 @@ const ProjectEditor = () => {
   const [storyData, setStoryData] = useState(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [videoPreferences, setVideoPreferences] = useState(null);
-  const [isGeneratingConcept, setIsGeneratingConcept] = useState(false);
 
   // Get user data for avatar
   const { user } = useAuthStore();
@@ -125,13 +126,15 @@ const ProjectEditor = () => {
     ]);
     
     setInputValue('');
-    setIsGeneratingConcept(true);
     
     try {
       if (!selectedProject?.id) {
         console.error('No project selected');
         return;
       }
+
+      // Set concept generation state
+      setIsGeneratingConcept(true);
 
       // Prepare the concept data
       const conceptData = {
@@ -144,6 +147,10 @@ const ProjectEditor = () => {
       // Call the new endpoint to generate basic concept
       const result = await questionsApi.generateBasicConcept(selectedProject.id, conceptData);
       console.log('Basic concept generated successfully:', result);
+      
+      // Mark concept as generated
+      setConceptGenerated(true);
+      setIsGeneratingConcept(false);
       
       // Update chat with success message
       setChatMessages(prev => [
@@ -162,6 +169,10 @@ const ProjectEditor = () => {
     } catch (error) {
       console.error('Failed to generate basic concept:', error);
       
+      // Reset concept generation state on error
+      setIsGeneratingConcept(false);
+      setConceptGenerated(false);
+      
       // Update chat with error message
       setChatMessages(prev => [
         ...prev,
@@ -175,8 +186,6 @@ const ProjectEditor = () => {
       
       // Still move to preference questions step even if concept generation fails
       setProjectEditorStep('preference_questions');
-    } finally {
-      setIsGeneratingConcept(false);
     }
   };
 
@@ -357,40 +366,6 @@ const ProjectEditor = () => {
     );
   }
 
-  // Show loading screen when generating concept
-  if (isGeneratingConcept) {
-    return (
-      <div className="w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex flex-col items-center justify-center">
-        <div className="text-center">
-          {/* Loading Animation */}
-          <div className="mb-8">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-white/20 border-t-[#94E7ED] rounded-full animate-spin mx-auto"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-white/30 border-t-[#F9D312] rounded-full animate-spin"></div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Loading Text */}
-          <h2 className="text-white text-2xl font-semibold mb-4">
-            Creating your concept...
-          </h2>
-          <p className="text-gray-300 text-lg max-w-md mx-auto">
-            We're analyzing your idea and preparing the perfect questions to customize your video.
-          </p>
-          
-          {/* Progress Dots */}
-          <div className="flex justify-center mt-8 space-x-2">
-            <div className="w-2 h-2 bg-[#94E7ED] rounded-full animate-pulse"></div>
-            <div className="w-2 h-2 bg-[#94E7ED] rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-            <div className="w-2 h-2 bg-[#94E7ED] rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Show StoryArc when completed
   if (showStoryArc) {
     return (
@@ -558,6 +533,8 @@ const ProjectEditor = () => {
               onAnswerSubmit={handlePreferenceAnswer}
               currentAnswers={projectEditor.preferenceAnswers}
               onGenerateScript={handleGenerateScript}
+              conceptGenerated={projectEditor.conceptGenerated}
+              isGeneratingConcept={projectEditor.isGeneratingConcept}
             />
           )}
         </div>
@@ -610,9 +587,9 @@ const ProjectEditor = () => {
                       ? 'Answer the questions above, or add more details about your video...'
                       : 'Describe what you want to create...'
                   }
-                  disabled={projectEditor.currentStep !== 'user_prompt' || isGeneratingConcept}
+                  disabled={projectEditor.currentStep !== 'user_prompt'}
                   className={`flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none text-base ${
-                    projectEditor.currentStep !== 'user_prompt' || isGeneratingConcept
+                    projectEditor.currentStep !== 'user_prompt'
                       ? 'opacity-50 cursor-not-allowed'
                       : ''
                   }`}
@@ -713,13 +690,13 @@ const ProjectEditor = () => {
                   {/* Button 4 - Send */}
                   <div
                     onClick={
-                      projectEditor.currentStep === 'user_prompt' && !isGeneratingConcept
+                      projectEditor.currentStep === 'user_prompt'
                         ? handlePromptSubmit
                         : undefined
                     }
-                    disabled={!inputValue.trim() || projectEditor.currentStep !== 'user_prompt' || isGeneratingConcept}
+                    disabled={!inputValue.trim() || projectEditor.currentStep !== 'user_prompt'}
                     className={`text-white p-2 rounded-lg transition-colors flex items-center justify-center flex-shrink-0 hover:bg-white/10 ${
-                      projectEditor.currentStep === 'user_prompt' && !isGeneratingConcept
+                      projectEditor.currentStep === 'user_prompt'
                         ? 'cursor-pointer'
                         : 'opacity-50 cursor-not-allowed'
                     }`}
