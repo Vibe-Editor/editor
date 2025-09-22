@@ -136,6 +136,7 @@ const request = {
   timeline: {
     addByUrl: (list) => ipcRenderer.invoke("extension:timeline:addByUrl", list),
     addByUrlWithDir: (list) => ipcRenderer.invoke("extension:timeline:addByUrlWithDir", list),
+    addByUrlWithAudioSeparation: (list) => ipcRenderer.invoke("extension:timeline:addByUrlWithAudioSeparation", list),
     addFromDir: (dirPath) => ipcRenderer.invoke("extension:timeline:addFromDir", dirPath),
   },
 };
@@ -205,6 +206,8 @@ const extension = {
       ipcRenderer.invoke("extension:timeline:addByUrl", list),
     addByUrlWithDir: (list) =>
       ipcRenderer.invoke("extension:timeline:addByUrlWithDir", list),
+    addByUrlWithAudioSeparation: (list) =>
+      ipcRenderer.invoke("extension:timeline:addByUrlWithAudioSeparation", list),
     addFromDir: (dirPath) => ipcRenderer.invoke("extension:timeline:addFromDir", dirPath),
   },
 };

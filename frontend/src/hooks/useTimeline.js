@@ -19,7 +19,7 @@ export const useTimeline = () => {
   }, []);
 
   const sendVideosToTimeline = useCallback(
-    async (selectedScript, combinedVideosMap, setError) => {
+    async (selectedScript, combinedVideosMap, setError, separateAudio = true) => {
       let payload = [];
       if (selectedScript) {
         // Prefer the unified map so we cover both freshly generated and previously stored videos
@@ -58,14 +58,21 @@ export const useTimeline = () => {
       }
 
       console.log('🎬 Sending videos to timeline:', payload);
+      console.log('🎬 Audio separation enabled:', separateAudio);
       console.log('🎬 Combined videos map keys:', Object.keys(combinedVideosMap));
       console.log('🎬 Timeline payload order:', payload.map(p => ({ id: p.id, url: p.url?.substring(0, 50) + '...' })));
 
       let success = false;
       try {
+        const addByUrlWithAudioSeparation = window?.api?.ext?.timeline?.addByUrlWithAudioSeparation;
         const addByUrlWithDir = window?.api?.ext?.timeline?.addByUrlWithDir;
         const addByUrlFn = window?.api?.ext?.timeline?.addByUrl;
-        if (addByUrlFn) {
+        
+        if (separateAudio && addByUrlWithAudioSeparation) {
+          console.log('🎵 Using audio separation handler');
+          await addByUrlWithAudioSeparation(payload);
+          success = true;
+        } else if (addByUrlFn) {
           if (addByUrlWithDir) {
             await addByUrlWithDir(payload);
           } else {
@@ -73,7 +80,9 @@ export const useTimeline = () => {
           }
           success = true;
         } else if (window?.electronAPI?.req?.timeline?.addByUrl) {
-          if (window.electronAPI.req.timeline.addByUrlWithDir) {
+          if (window.electronAPI.req.timeline.addByUrlWithAudioSeparation && separateAudio) {
+            await window.electronAPI.req.timeline.addByUrlWithAudioSeparation(payload);
+          } else if (window.electronAPI.req.timeline.addByUrlWithDir) {
             await window.electronAPI.req.timeline.addByUrlWithDir(payload);
           } else {
             await window.electronAPI.req.timeline.addByUrl(payload);
@@ -81,10 +90,10 @@ export const useTimeline = () => {
           success = true;
         } else if (window.require) {
           const { ipcRenderer } = window.require("electron");
-          await ipcRenderer.invoke(
-            "extension:timeline:addByUrlWithDir",
-            payload,
-          );
+          const handler = separateAudio ? 
+            "extension:timeline:addByUrlWithAudioSeparation" : 
+            "extension:timeline:addByUrlWithDir";
+          await ipcRenderer.invoke(handler, payload);
           success = true;
         }
       } catch (err) {
@@ -103,7 +112,7 @@ export const useTimeline = () => {
   );
 
   const addSingleVideoToTimeline = useCallback(
-    async (segmentId, combinedVideosMap, setError) => {
+    async (segmentId, combinedVideosMap, setError, separateAudio = true) => {
       const videoUrl =
         combinedVideosMap[segmentId] || combinedVideosMap[String(segmentId)];
       if (!videoUrl) {
@@ -114,9 +123,15 @@ export const useTimeline = () => {
       const payload = [{ id: Number(segmentId), url: videoUrl }];
       let success = false;
       try {
+        const addByUrlWithAudioSeparation = window?.api?.ext?.timeline?.addByUrlWithAudioSeparation;
         const addByUrlWithDir = window?.api?.ext?.timeline?.addByUrlWithDir;
         const addByUrlFn = window?.api?.ext?.timeline?.addByUrl;
-        if (addByUrlFn) {
+        
+        if (separateAudio && addByUrlWithAudioSeparation) {
+          console.log('🎵 Using audio separation for single video');
+          await addByUrlWithAudioSeparation(payload);
+          success = true;
+        } else if (addByUrlFn) {
           if (addByUrlWithDir) {
             await addByUrlWithDir(payload);
           } else {
@@ -124,7 +139,9 @@ export const useTimeline = () => {
           }
           success = true;
         } else if (window?.electronAPI?.req?.timeline?.addByUrl) {
-          if (window.electronAPI.req.timeline.addByUrlWithDir) {
+          if (window.electronAPI.req.timeline.addByUrlWithAudioSeparation && separateAudio) {
+            await window.electronAPI.req.timeline.addByUrlWithAudioSeparation(payload);
+          } else if (window.electronAPI.req.timeline.addByUrlWithDir) {
             await window.electronAPI.req.timeline.addByUrlWithDir(payload);
           } else {
             await window.electronAPI.req.timeline.addByUrl(payload);
@@ -132,10 +149,10 @@ export const useTimeline = () => {
           success = true;
         } else if (window.require) {
           const { ipcRenderer } = window.require("electron");
-          await ipcRenderer.invoke(
-            "extension:timeline:addByUrlWithDir",
-            payload,
-          );
+          const handler = separateAudio ? 
+            "extension:timeline:addByUrlWithAudioSeparation" : 
+            "extension:timeline:addByUrlWithDir";
+          await ipcRenderer.invoke(handler, payload);
           success = true;
         }
       } catch (err) {
