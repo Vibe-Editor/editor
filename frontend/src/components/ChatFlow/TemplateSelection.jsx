@@ -240,7 +240,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
   };
 
   return (
-    <div className="w-full h-screen bg-[#000000] flex relative">
+    
+    <div className="w-full h-screen bg-[#111215] flex relative">
       {/* Left Panel - Story Arc Content */}
       <div className="w-1/3 bg-gradient-to-b from-[#000000] to-[#83ebf226] backdrop-blur-sm flex flex-col border-r border-white/10">
         {/* Header */}
@@ -257,7 +258,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
             if (index > currentStep) return null;
             const isExpanded = expandedSections[index];
             return (
-              <div key={index} className="border border-white/10 rounded-lg bg-transparent backdrop-blur-[2px]">
+              <div key={index} className="border-1 border-white/10 rounded-lg bg-transparent backdrop-blur-[2px]">
                 <div 
                   className="p-3 cursor-pointer hover:bg-white/10 transition-colors"
                   onClick={() => toggleSection(index)}
@@ -410,7 +411,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
                                 {/* Selection Indicator */}
                                 {selectedTemplate?.id === template.id && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-[#94E7ED]/10 backdrop-blur-none">
-                                    <div className="w-16 h-16 bg-[#94E7ED] rounded-full flex items-center justify-center shadow-xl animate-pulse">
+                                    <div className="w-16 h-16 bg-[#94E7ED] rounded-full flex items-center justify-center animate-pulse">
                                       <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                       </svg>
@@ -436,7 +437,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
                             <div
                               className={`absolute -inset-1 blur-xl transition-opacity duration-300 -z-10 ${
                                 selectedTemplate?.id === template.id
-                                  ? 'bg-gradient-to-r from-[#94E7ED]/20 to-[#94E7ED]/10 opacity-100'
+                                  ? 'bg-transparent opacity-0'
                                   : 'bg-gradient-to-r from-white/10 to-white/5 opacity-0 group-hover:opacity-50'
                               }`}
                               style={{

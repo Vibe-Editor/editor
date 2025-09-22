@@ -8,7 +8,7 @@ import { useProjectStore } from '../../store/useProjectStore';
 // Section titles are always the same
 const sectionTitles = [
   'SET THE SCENE',
-  'RUIN THINGS', 
+  'RUN THINGS', 
   'THE BREAKING POINT',
   'CLEAN UP THE MESS',
   'WRAP IT UP'
