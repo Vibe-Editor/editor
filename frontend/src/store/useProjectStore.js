@@ -36,6 +36,8 @@ const storeImpl = (set, get) => ({
     userPrompt: '',
     preferenceAnswers: {},
     chatMessages: [],
+    conceptGenerated: false,
+    isGeneratingConcept: false,
   },
 
   // Template selections per story section (0..4)
@@ -255,6 +257,12 @@ const storeImpl = (set, get) => ({
   setChatMessages: (messages) => set((state) => ({
     projectEditor: { ...state.projectEditor, chatMessages: messages }
   })),
+  setConceptGenerated: (generated) => set((state) => ({
+    projectEditor: { ...state.projectEditor, conceptGenerated: generated }
+  })),
+  setIsGeneratingConcept: (generating) => set((state) => ({
+    projectEditor: { ...state.projectEditor, isGeneratingConcept: generating }
+  })),
   resetProjectEditor: () => {
     console.log('🏪 Store: Resetting project editor state');
     set((state) => ({
@@ -265,6 +273,8 @@ const storeImpl = (set, get) => ({
         userPrompt: '',
         preferenceAnswers: {},
         chatMessages: [],
+        conceptGenerated: false,
+        isGeneratingConcept: false,
       }
     }));
   },
@@ -301,6 +311,8 @@ const storeImpl = (set, get) => ({
         preferenceAnswers: {},
         userPrompt: '',
         videoTypeSelection: null,
+        conceptGenerated: false,
+        isGeneratingConcept: false,
       }
     }));
   },

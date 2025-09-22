@@ -7,6 +7,7 @@ import StoryArcEngine from './StoryArc';
 import { assets } from '../../assets/assets';
 import { questionsApi } from '../../services/questions';
 import { storyEngineApi } from '../../services/storyEngine';
+import { projectApi } from '../../services/project';
 
 const ProjectEditor = () => {
   const selectedProject = useProjectStore((state) => state.selectedProject);
@@ -20,6 +21,11 @@ const ProjectEditor = () => {
   const resetProjectEditor = useProjectStore((state) => state.resetProjectEditor);
   const clearProjectEditorAfterSave = useProjectStore((state) => state.clearProjectEditorAfterSave);
   const setPreferenceVideos = useProjectStore((state) => state.setPreferenceVideos);
+  const creditBalance = useProjectStore((state) => state.creditBalance);
+  const fetchBalance = useProjectStore((state) => state.fetchBalance);
+  const loadingData = useProjectStore((state) => state.loadingData);
+  const setConceptGenerated = useProjectStore((state) => state.setConceptGenerated);
+  const setIsGeneratingConcept = useProjectStore((state) => state.setIsGeneratingConcept);
   
   const [inputValue, setInputValue] = useState('');
   const [showStoryArc, setShowStoryArc] = useState(false);
@@ -27,6 +33,8 @@ const ProjectEditor = () => {
   const [storyData, setStoryData] = useState(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [videoPreferences, setVideoPreferences] = useState(null);
+  const [workflowData, setWorkflowData] = useState(null);
+  const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(false);
 
   // Get user data for avatar
   const { user } = useAuthStore();
@@ -42,10 +50,16 @@ const ProjectEditor = () => {
 
   useEffect(() => {
     if (selectedProject) {
-      initializeChat();
+      fetchProjectWorkflow();
       fetchQuestions();
     }
   }, [selectedProject]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchBalance(user.id);
+    }
+  }, [user?.id, fetchBalance]);
 
   useEffect(() => {
     if (showStoryArc) {
@@ -55,6 +69,219 @@ const ProjectEditor = () => {
       setStoryArcIn(false);
     }
   }, [showStoryArc]);
+
+  const fetchProjectWorkflow = async () => {
+    if (!selectedProject?.id) return;
+    
+    try {
+      setIsLoadingWorkflow(true);
+      const data = await projectApi.getProjectWorkflow(selectedProject.id);
+      console.log('🔍 Full API response:', data);
+      console.log('🔍 stepData exists:', !!data.stepData);
+      console.log('🔍 stepData:', data.stepData);
+      console.log('🔍 stepData.type:', data.stepData?.type);
+      setWorkflowData(data);
+      
+       // Determine current step based on stepData.type
+       if (data.stepData && data.stepData.type) {
+         console.log('✅ Found stepData.type:', data.stepData.type);
+         
+         // Map stepData.type to frontend step
+         const stepMapping = {
+           'initial_setup': 'video_type_selection',
+           'segments': 'story_arc',
+           'videos': 'add_video_timeline'
+         };
+         
+         const frontendStep = stepMapping[data.stepData.type] || 'video_type_selection';
+         console.log('Mapped frontend step:', frontendStep);
+         setProjectEditorStep(frontendStep);
+         
+         // Handle stepData and show appropriate screen directly
+         handleWorkflowStepData(frontendStep, data.stepData);
+       } else {
+         console.log('❌ No stepData found, falling back to initial setup');
+         console.log('❌ data.stepData:', data.stepData);
+         // Default to initial setup if no stepData
+         initializeChat();
+       }
+    } catch (error) {
+      console.error('Failed to fetch project workflow:', error);
+      // Fallback to default initialization
+      initializeChat();
+    } finally {
+      setIsLoadingWorkflow(false);
+    }
+  };
+
+  const handleWorkflowStepData = (step, stepData) => {
+    console.log('🔍 handleWorkflowStepData called with step:', step, 'stepData:', stepData);
+    
+    // Handle stepData based on workflow step type
+    if (stepData) {
+      console.log('Processing stepData:', stepData);
+      
+      switch (stepData.type) {
+        case 'initial_setup':
+          // Handle concept + web research data
+          if (stepData.data) {
+            console.log('Initial setup data (concept + web research):', stepData.data);
+            // Set concept and research data if available
+            if (stepData.data.concept) {
+              setConceptGenerated(true);
+            }
+            if (stepData.data.research) {
+              // Handle research data
+              console.log('Research data:', stepData.data.research);
+            }
+          }
+          break;
+        case 'segments':
+          // Handle segments array data
+          if (stepData.data) {
+            console.log('Segments data:', stepData.data);
+            // Set story data if available
+            if (Array.isArray(stepData.data)) {
+              setStoryData({ segments: stepData.data });
+            }
+          }
+          break;
+        case 'videos':
+          // Handle videos + segments data
+          if (stepData.data) {
+            console.log('Videos data (videos + segments):', stepData.data);
+            // Set video preferences if available
+            if (stepData.data.videoPreferences) {
+              setVideoPreferences(stepData.data.videoPreferences);
+            }
+            if (stepData.data.videos) {
+              // Handle videos data for timeline
+              console.log('Videos for timeline:', stepData.data.videos);
+            }
+            if (Array.isArray(stepData.data)) {
+              setStoryData({ segments: stepData.data });
+            }
+          }
+          break;
+      }
+    }
+    
+    // Show appropriate screen directly based on step
+    console.log('🔍 Switching on step:', step);
+    switch (step) {
+      case 'video_type_selection':
+        console.log('📺 Showing video type selection');
+        // Show video type selection screen with chat
+        initializeChat();
+        break;
+      case 'story_arc':
+        console.log('🎬 Showing story arc');
+        // Show story arc directly
+        if (stepData?.data && Array.isArray(stepData.data)) {
+          console.log('✅ Found segments data, setting story data');
+          setStoryData({ segments: stepData.data });
+          setShowStoryArc(true);
+        } else {
+          console.log('❌ No segments data, falling back to chat');
+          // Fallback to chat if no segments data
+          initializeChat();
+        }
+        break;
+      case 'add_video_timeline':
+        console.log('🎥 Showing video timeline');
+        // Show timeline screen directly - no chat needed
+        // The screen will be shown in the render logic
+        break;
+      default:
+        console.log('❓ Unknown step, falling back to chat:', step);
+        // Fallback to chat
+        initializeChat();
+    }
+  };
+
+  const initializeChatForStep = (step, stepData) => {
+    let initialMessage = '';
+    
+    // Handle stepData based on workflow step type
+    if (stepData) {
+      console.log('Processing stepData:', stepData);
+      
+      switch (stepData.type) {
+        case 'initial_setup':
+          // Handle concept + web research data
+          if (stepData.data) {
+            console.log('Initial setup data (concept + web research):', stepData.data);
+            // Set concept and research data if available
+            if (stepData.data.concept) {
+              setConceptGenerated(true);
+            }
+            if (stepData.data.research) {
+              // Handle research data
+              console.log('Research data:', stepData.data.research);
+            }
+          }
+          break;
+        case 'segments':
+          // Handle segments array data
+          if (stepData.data) {
+            console.log('Segments data:', stepData.data);
+            // Set story data if available
+            if (Array.isArray(stepData.data)) {
+              setStoryData({ segments: stepData.data });
+            }
+          }
+          break;
+        case 'videos':
+          // Handle videos + segments data
+          if (stepData.data) {
+            console.log('Videos data (videos + segments):', stepData.data);
+            // Set video preferences if available
+            if (stepData.data.videoPreferences) {
+              setVideoPreferences(stepData.data.videoPreferences);
+            }
+            if (stepData.data.videos) {
+              // Handle videos data for timeline
+              console.log('Videos for timeline:', stepData.data.videos);
+            }
+            if (Array.isArray(stepData.data)) {
+              setStoryData({ segments: stepData.data });
+            }
+          }
+          break;
+      }
+    }
+    
+    switch (step) {
+      case 'video_type_selection':
+        initialMessage = 'Hi! Let\'s create something amazing together. First, what type of video would you like to make?';
+        break;
+      case 'preference_questions':
+        initialMessage = 'Great! Now let me ask you a few questions to customize your video.';
+        break;
+      case 'story_arc':
+        initialMessage = 'Perfect! Your video segments have been generated. Let\'s review the story arc.';
+        // If we have story data, show the story arc
+        if (stepData?.data?.segments) {
+          setStoryData({ segments: stepData.data.segments });
+          setShowStoryArc(true);
+        }
+        break;
+      case 'add_video_timeline':
+        initialMessage = 'Excellent! Your videos have been generated. Now let\'s add them to your timeline.';
+        break;
+      default:
+        initialMessage = 'Hi! Let\'s create something amazing together. First, what type of video would you like to make?';
+    }
+    
+    setChatMessages([
+      {
+        id: 1,
+        type: 'bot',
+        content: initialMessage,
+        timestamp: new Date()
+      }
+    ]);
+  };
 
   const initializeChat = () => {
     setChatMessages([
@@ -91,27 +318,91 @@ const ProjectEditor = () => {
     setProjectEditorStep('user_prompt');
   };
 
-  const handlePromptSubmit = () => {
+  const handlePromptSubmit = async () => {
     if (!inputValue.trim()) return;
     
-    setUserPrompt(inputValue);
+    const userPrompt = inputValue.trim();
+    setUserPrompt(userPrompt);
+    
+    // Add user message to chat
     setChatMessages([
       ...projectEditor.chatMessages,
       {
         id: projectEditor.chatMessages.length + 1,
         type: 'user',
-        content: inputValue,
+        content: userPrompt,
         timestamp: new Date()
       },
       {
         id: projectEditor.chatMessages.length + 2,
         type: 'bot',
-        content: 'Perfect! Now let me ask you a few questions to customize your video.',
+        content: 'Great! Let me create a concept for your video...',
         timestamp: new Date()
       }
     ]);
+    
     setInputValue('');
-    setProjectEditorStep('preference_questions');
+    
+    try {
+      if (!selectedProject?.id) {
+        console.error('No project selected');
+        return;
+      }
+
+      // Set concept generation state
+      setIsGeneratingConcept(true);
+
+      // Prepare the concept data
+      const conceptData = {
+        userPrompt: userPrompt,
+        videoType: projectEditor.videoTypeSelection?.id || 'talking_head'
+      };
+
+      console.log('Generating basic concept with data:', conceptData);
+      
+      // Call the new endpoint to generate basic concept
+      const result = await questionsApi.generateBasicConcept(selectedProject.id, conceptData);
+      console.log('Basic concept generated successfully:', result);
+      
+      // Mark concept as generated
+      setConceptGenerated(true);
+      setIsGeneratingConcept(false);
+      
+      // Update chat with success message
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: prev.length + 1,
+          type: 'bot',
+          content: 'Perfect! Now let me ask you a few questions to customize your video.',
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Move to preference questions step
+      setProjectEditorStep('preference_questions');
+      
+    } catch (error) {
+      console.error('Failed to generate basic concept:', error);
+      
+      // Reset concept generation state on error
+      setIsGeneratingConcept(false);
+      setConceptGenerated(false);
+      
+      // Update chat with error message
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: prev.length + 1,
+          type: 'bot',
+          content: 'I had trouble creating your concept, but let\'s continue with the questions to customize your video.',
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Still move to preference questions step even if concept generation fails
+      setProjectEditorStep('preference_questions');
+    }
   };
 
   const handlePreferenceAnswer = async (questionKey, answer) => {
@@ -209,7 +500,73 @@ const ProjectEditor = () => {
     const allAnswers = { ...projectEditor.preferenceAnswers };
     setIsGeneratingStory(true);
     setShowStoryArc(true);
-    await saveVideoPreferences(allAnswers);
+    
+    try {
+      if (!selectedProject?.id) {
+        console.error('No project selected');
+        return;
+      }
+
+      // Map the answers to the API format - extract only id values
+      const preferences = {
+        user_prompt: projectEditor.userPrompt,
+        video_type: projectEditor.videoTypeSelection?.id || 'talking_head',
+        visual_style: allAnswers.visual_style?.id || 'cool_corporate',
+        lighting_mood: allAnswers.mood_tone?.id || 'bright_minimal',
+        camera_style: allAnswers.camera_movement?.id || 'static_locked',
+        subject_focus: allAnswers.subject_focus?.id || 'person_vr',
+        location_environment: allAnswers.environment_space?.id || 'minimal_room'
+      };
+
+      console.log('Generating segments with preferences:', preferences);
+      
+      // Call the new endpoint to generate segments with preferences
+      const result = await questionsApi.generateSegmentsWithPreferences(selectedProject.id, preferences);
+      console.log('Segments generated successfully:', result);
+      
+      // Store the result for the StoryArc component
+      setStoryData(result.data);
+      setVideoPreferences(result);
+      
+      // Extract and preserve preference videos
+      const preferenceVideos = [];
+      if (allAnswers && typeof allAnswers === 'object') {
+        Object.values(allAnswers).forEach((ans) => {
+          if (preferenceVideos.length >= 2) return; // Only take first 2
+          const src = (ans?.s3_key || ans?.s3Key || '').trim();
+          if (src) preferenceVideos.push(src);
+        });
+      }
+      console.log('Extracted preference videos:', preferenceVideos);
+      setPreferenceVideos(preferenceVideos);
+      
+      // Clear the project editor state after successful generation
+      clearProjectEditorAfterSave();
+      
+      setChatMessages([
+        ...projectEditor.chatMessages,
+        {
+          id: projectEditor.chatMessages.length + 2,
+          type: 'bot',
+          content: 'Perfect! Your video segments have been generated with your preferences.',
+          timestamp: new Date()
+        }
+      ]);
+      
+    } catch (error) {
+      console.error('Failed to generate segments with preferences:', error);
+      setChatMessages([
+        ...projectEditor.chatMessages,
+        {
+          id: projectEditor.chatMessages.length + 2,
+          type: 'bot',
+          content: 'There was an issue generating your video segments. Please try again.',
+          timestamp: new Date()
+        }
+      ]);
+    } finally {
+      setIsGeneratingStory(false);
+    }
   };
 
   const handleClose = () => {
@@ -225,12 +582,81 @@ const ProjectEditor = () => {
     );
   }
 
+  if (isLoadingWorkflow) {
+    return (
+      <div className="w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex items-center justify-center">
+        <div className="text-white text-xl">Loading project...</div>
+      </div>
+    );
+  }
+
   // Show StoryArc when completed
   if (showStoryArc) {
     return (
       <div className={`w-full h-screen bg-black overflow-hidden`}> 
         <div className={`w-full h-full transform transition-transform duration-500 ease-out ${storyArcIn ? 'translate-x-0' : 'translate-x-full'}`}>
           <StoryArcEngine storyData={storyData} videoPreferences={videoPreferences} isLoading={isGeneratingStory} />
+        </div>
+      </div>
+    );
+  }
+
+  // Show Add Video Timeline screen
+  if (projectEditor.currentStep === 'add_video_timeline') {
+    return (
+      <div className="w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex flex-col relative">
+        {/* Header */}
+        <div className="absolute top-6 left-6 z-10 flex items-center gap-3">
+          <img src={assets.SandBoxLogo} alt="Usuals.ai" className="w-10 h-10" />
+          <div className="flex flex-col">
+            <h1 className="text-2xl text-white font-semibold">Usuals</h1>
+          </div>
+        </div>
+
+        {/* Close Button */}
+        <div className="absolute top-6 right-6 z-10">
+          <div
+            onClick={handleClose}
+            className="text-gray-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer"
+            aria-label="Close"
+            title="Close"
+          >
+            <svg
+              className="w-7 h-7"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 px-6 sm:px-10 md:px-16 pt-12 pb-2 flex justify-center items-center">
+          <div className="w-full max-w-6xl text-center">
+            <h1 className="text-white text-4xl sm:text-6xl font-bold mb-6">
+              Your videos are <span className="text-[#94E7EDCC]">ready!</span>
+            </h1>
+            <p className="text-gray-300 text-lg max-w-2xl mx-auto leading-relaxed mb-8">
+              Your videos have been generated successfully. You can now add them to your timeline and start editing.
+            </p>
+            
+            {/* Video Timeline Placeholder */}
+            <div className="bg-gradient-to-t from-[#20272B]/50 to-[#000000]/30 rounded-2xl border-1 border-white/20 p-8 backdrop-blur-sm">
+              <div className="text-white/70 text-lg mb-4">
+                Video Timeline Component
+              </div>
+              <div className="text-white/50 text-sm">
+                This is where the video timeline will be displayed
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -320,7 +746,9 @@ const ProjectEditor = () => {
                 stroke-linejoin="round"
               />
             </svg>
-            <span className="text-base">2000</span>
+            <span className="text-base">
+              {loadingData.balance ? "..." : Math.round(creditBalance)}
+            </span>
           </div>
         </div>
 
@@ -390,6 +818,8 @@ const ProjectEditor = () => {
               onAnswerSubmit={handlePreferenceAnswer}
               currentAnswers={projectEditor.preferenceAnswers}
               onGenerateScript={handleGenerateScript}
+              conceptGenerated={projectEditor.conceptGenerated}
+              isGeneratingConcept={projectEditor.isGeneratingConcept}
             />
           )}
         </div>

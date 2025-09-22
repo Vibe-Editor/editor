@@ -19,6 +19,9 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
   const [generationProgress, setGenerationProgress] = useState(0);
   // Match VideoGrid UI: track loading state per template video
   const [loadingStates, setLoadingStates] = useState({});
+  // Credits (reference from StoryArc.jsx)
+  const creditBalance = useProjectStore((state) => state.creditBalance);
+  const loadingData = useProjectStore((state) => state.loadingData);
   const handleVideoLoad = (templateId) => {
     setLoadingStates((prev) => ({ ...prev, [templateId]: false }));
   };
@@ -237,14 +240,15 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
   };
 
   return (
-    <div className="w-full h-screen bg-gradient-to-b from-[#373738] to-[#1D1D1D] flex relative">
+    
+    <div className="w-full h-screen bg-[#111215] flex relative">
       {/* Left Panel - Story Arc Content */}
-      <div className="w-1/3 bg-white/5 backdrop-blur-sm flex flex-col border-r border-white/10">
+      <div className="w-1/3 bg-gradient-to-b from-[#000000] to-[#83ebf226] backdrop-blur-sm flex flex-col border-r border-white/10">
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between relative">
           <div className="flex items-center gap-3">
             <img src={assets.SandBoxLogo} alt="Usuals.ai" className="w-6 h-6" />
-            <h1 className="text-white text-lg font-semibold">Template Selection</h1>
+            <h1 className="text-[#94E7ED] text-lg font-semibold">Template Selection</h1>
           </div>
         </div>
 
@@ -254,13 +258,13 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
             if (index > currentStep) return null;
             const isExpanded = expandedSections[index];
             return (
-              <div key={index} className="border border-white/10 rounded-lg bg-white/5 backdrop-blur-[2px]">
+              <div key={index} className="border-1 border-white/10 rounded-lg bg-transparent backdrop-blur-[2px]">
                 <div 
                   className="p-3 cursor-pointer hover:bg-white/10 transition-colors"
                   onClick={() => toggleSection(index)}
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-[#F9D312] font-bold text-xs tracking-wider">
+                    <h3 className="text-[#94E7ED] font-bold text-xs tracking-wider">
                       {section.title}
                     </h3>
                     <svg 
@@ -276,7 +280,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
                   </div>
                 </div>
                 {isExpanded && (
-                  <div className="px-3 pb-3 border-t border-white/10">
+                  <div className="px-3 pb-3 border-0">
                     <p className="text-white/80 text-xs leading-relaxed pt-3">
                       {section.content}
                     </p>
@@ -294,6 +298,24 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
 
       {/* Right Panel - Template Selection */}
       <div className={`flex-1 flex flex-col relative`}>
+        {/* Credits badge moved to top-right of main screen */}
+        <div className="absolute top-6 right-6 z-10">
+          <div
+            className="text-gray-400 bg-white/10 transition-colors border-1 border-white/20 px-3 py-1.5 rounded-lg cursor-default"
+            aria-label="Credits"
+            title="Credits"
+          >
+            <div className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 13C10.3137 13 13 10.3137 13 7C13 3.68629 10.3137 1 7 1C3.68629 1 1 3.68629 1 7C1 10.3137 3.68629 13 7 13Z" stroke="currentColor" strokeWidth="1.33" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M5.86848 5.46472C6.2645 5.0687 6.4625 4.87069 6.69083 4.7965C6.89168 4.73124 7.10802 4.73124 7.30887 4.7965C7.53719 4.87069 7.7352 5.0687 8.13122 5.46472L8.53515 5.86864C8.93116 6.26466 9.12917 6.46267 9.20336 6.69099C9.26862 6.89184 9.26862 7.10819 9.20336 7.30903C9.12917 7.53736 8.93116 7.73537 8.53515 8.13138L8.13122 8.53531C7.7352 8.93132 7.53719 9.12933 7.30887 9.20352C7.10802 9.26878 6.89168 9.26878 6.69083 9.20352C6.4625 9.12933 6.2645 8.93132 5.86848 8.53531L5.46455 8.13138C5.06854 7.73537 4.87053 7.53736 4.79634 7.30903C4.73108 7.10819 4.73108 6.89184 4.79634 6.69099C4.87053 6.46267 5.06854 6.26466 5.46455 5.86864L5.86848 5.46472Z" stroke="currentColor" strokeWidth="1.33" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-base text-gray-400">
+                {loadingData?.balance ? "..." : Math.round(creditBalance)}
+              </span>
+            </div>
+          </div>
+        </div>
         {/* Back Button in main content area - only show if not on step 0 */}
         {currentStep > 0 && (
           <div
@@ -312,8 +334,9 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
         )}
         <div className="flex-1 p-8 overflow-hidden">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-white text-3xl font-semibold mb-6 text-center">
-              Choose Your Template
+            <h2 className="text-3xl font-semibold mb-6 text-center">
+              <span className="text-white">Choose Your </span>
+              <span className="text-[#94E7ED]">Template</span>
             </h2>
             <p className="text-gray-400 text-center mb-8 max-w-2xl mx-auto">
               Select a template that best fits your story arc and video style. Each template is optimized for different types of content.
@@ -354,7 +377,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
                               }}
                             >
                               {/* Video Section - full card */}
-                              <div className="relative w-full h-full bg-gradient-to-br from-amber-50/20 to-orange-100/20">
+                              <div className="relative w-full h-full bg-gradient-to-br from-[#94E7ED]/10 to-[#94E7ED]/5">
                                 {loadingStates[template.id] && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-white/10 backdrop-blur-sm">
                                     <div className="w-8 h-8 border-2 border-white/30 border-t-amber-400 rounded-full animate-spin"></div>
@@ -375,11 +398,11 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
 
                                 {/* Text overlay with gradient background */}
                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#424243] to-[#42424360] backdrop-blur-sm px-4 py-3">
-                                  <h3 className="text-white font-medium text-base mb-1 leading-tight drop-shadow-sm">
+                                  <h3 className={`${selectedTemplate?.id === template.id ? 'text-[#94E7ED]' : 'text-white'} font-medium text-base mb-1 leading-tight drop-shadow-sm`}>
                                     {template.label || template.description}
                                   </h3>
                                   {template.description && (
-                                    <p className="text-white/80 text-xs leading-relaxed drop-shadow-sm line-clamp-2">
+                                    <p className={`${selectedTemplate?.id === template.id ? 'text-[#94E7ED]' : 'text-white/80'} text-xs leading-relaxed drop-shadow-sm line-clamp-2`}>
                                       {template.description}
                                     </p>
                                   )}
@@ -387,8 +410,8 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
 
                                 {/* Selection Indicator */}
                                 {selectedTemplate?.id === template.id && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-amber-400/10 backdrop-blur-none">
-                                    <div className="w-16 h-16 bg-amber-400 rounded-full flex items-center justify-center shadow-xl animate-pulse">
+                                  <div className="absolute inset-0 flex items-center justify-center bg-[#94E7ED]/10 backdrop-blur-none">
+                                    <div className="w-16 h-16 bg-[#94E7ED] rounded-full flex items-center justify-center animate-pulse">
                                       <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                       </svg>
@@ -398,12 +421,12 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
                               </div>
 
                               {/* Compact Text Section */}
-                              <div className="px-6 py-4 bg-white/5 backdrop-blur-sm border-t border-white/10">
-                                <h3 className="text-white font-medium text-base mb-1 leading-tight drop-shadow-sm">
+                              <div className="px-6 py-4 bg-white/5 backdrop-blur-sm border-0">
+                                <h3 className={`${selectedTemplate?.id === template.id ? 'text-[#94E7ED]' : 'text-white'} font-medium text-base mb-1 leading-tight drop-shadow-sm`}>
                                   {template.label || template.description}
                                 </h3>
                                 {template.description && (
-                                  <p className="text-white/80 text-xs leading-relaxed drop-shadow-sm line-clamp-2">
+                                  <p className={`${selectedTemplate?.id === template.id ? 'text-[#94E7ED]' : 'text-white/80'} text-xs leading-relaxed drop-shadow-sm line-clamp-2`}>
                                     {template.description}
                                   </p>
                                 )}
@@ -414,7 +437,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
                             <div
                               className={`absolute -inset-1 blur-xl transition-opacity duration-300 -z-10 ${
                                 selectedTemplate?.id === template.id
-                                  ? 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 opacity-100'
+                                  ? 'bg-transparent opacity-0'
                                   : 'bg-gradient-to-r from-white/10 to-white/5 opacity-0 group-hover:opacity-50'
                               }`}
                               style={{
@@ -449,11 +472,11 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
                   style={{ willChange: 'transform' }}
                 >
                   <div className="w-full h-64 flex flex-col items-center justify-center text-center space-y-4">
-                    <h3 className="text-white text-2xl font-semibold">Ready to generate videos</h3>
+                    <h3 className="text-[#94E7ED] text-2xl font-semibold">Ready to generate videos</h3>
                     <p className="text-gray-400">All selections are complete. Proceed when you are ready.</p>
                     <button
                       onClick={handleReadyGenerate}
-                      className="px-6 py-3 bg-[#F9D312] hover:bg-[#F9D312] text-black rounded-lg font-medium transition-colors"
+                      className="px-6 py-3 bg-[#94E7ED] hover:bg-[#94E7ED] text-black rounded-lg font-medium transition-colors"
                     >
                       Ready to generate videos
                     </button>
@@ -472,7 +495,7 @@ const TemplateSelection = ({ storyArcData, templateResponses, segmentIds, videoP
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
           {/* Center loader */}
           <div className="relative z-10 flex flex-col items-center">
-            <div className="w-16 h-16 border-4 border-[#F9D312] border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-16 h-16 border-4 border-[#94E7ED] border-t-transparent rounded-full animate-spin"></div>
             <p className="mt-4 text-white/80 text-sm" aria-live="polite">Loading templates...</p>
           </div>
         </div>
