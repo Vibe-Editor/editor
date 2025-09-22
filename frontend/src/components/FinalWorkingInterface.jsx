@@ -581,7 +581,7 @@ const FinalWorkingInterface = () => {
               </svg>
               <span>Invite</span>
             </div>
-            {/* <div
+             <div
               onClick={openEditorAndCloseChat}
               className='bg-[#4A90E2] hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer'
             >
@@ -608,7 +608,7 @@ const FinalWorkingInterface = () => {
                 />
               </svg>
               <span>Open Editor</span>
-            </div> */}
+            </div> 
             <ChatLoginButton />
           </div>
         </div>
@@ -852,7 +852,7 @@ const FinalWorkingInterface = () => {
             </svg>
             <span>Invite</span>
           </div>
-          {/* <div
+          <div
             onClick={openEditorAndCloseChat}
             className='bg-[#4A90E2] hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer'
           >
@@ -879,7 +879,7 @@ const FinalWorkingInterface = () => {
               />
             </svg>
             <span>Open Editor</span>
-          </div> */}
+          </div>
           <div
             // Quick project creation: create project without triggering chat flow
             onClick={() => handleCreateProject("Quick project creation", false)}
