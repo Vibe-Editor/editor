@@ -32,7 +32,12 @@ const StoryArcEngine = ({ storyData, videoPreferences, isLoading = false }) => {
 
   // Update sections when storyData changes
   React.useEffect(() => {
-    if (!storyData?.storySegments) return;
+    // Handle both old format (storySegments) and new format (segments)
+    const segments = storyData?.storySegments || storyData?.segments;
+    if (!segments) return;
+    
+    console.log('🎬 StoryArc received data:', storyData);
+    console.log('🎬 Segments:', segments);
     
     const mappedSections = [];
     const mappedSegmentIds = [];
@@ -41,14 +46,15 @@ const StoryArcEngine = ({ storyData, videoPreferences, isLoading = false }) => {
     const orderedTypes = ['setTheScene', 'ruinThings', 'theBreakingPoint', 'cleanUpTheMess', 'wrapItUp'];
     
     orderedTypes.forEach((type, index) => {
-      const segment = storyData.storySegments.find(s => s.type === type);
+      const segment = segments.find(s => s.type === type);
       mappedSections.push({
         title: sectionTitles[index],
-        content: segment?.visual || ''
+        content: segment?.visual || segment?.description || ''
       });
       mappedSegmentIds.push(segment?.id || null);
     });
     
+    console.log('🎬 Mapped sections:', mappedSections);
     setSections(mappedSections);
     setSegmentIds(mappedSegmentIds);
     draftRef.current = mappedSections.map((s) => s.content);
