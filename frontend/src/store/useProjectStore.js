@@ -36,7 +36,18 @@ const storeImpl = (set, get) => ({
     userPrompt: '',
     preferenceAnswers: {},
     chatMessages: [],
+    conceptGenerated: false,
+    isGeneratingConcept: false,
   },
+
+  // Template selections per story section (0..4)
+  templateSelections: {},
+  
+  // Preserve user preference videos for Loading component (before preferenceAnswers gets cleared)
+  preferenceVideos: [],
+  
+  // Store generated video results from TemplateSelection for timeline integration
+  generatedVideoResults: [],
   loadingData: {
     conversations: false,
     concepts: false,
@@ -246,6 +257,12 @@ const storeImpl = (set, get) => ({
   setChatMessages: (messages) => set((state) => ({
     projectEditor: { ...state.projectEditor, chatMessages: messages }
   })),
+  setConceptGenerated: (generated) => set((state) => ({
+    projectEditor: { ...state.projectEditor, conceptGenerated: generated }
+  })),
+  setIsGeneratingConcept: (generating) => set((state) => ({
+    projectEditor: { ...state.projectEditor, isGeneratingConcept: generating }
+  })),
   resetProjectEditor: () => {
     console.log('🏪 Store: Resetting project editor state');
     set((state) => ({
@@ -256,9 +273,34 @@ const storeImpl = (set, get) => ({
         userPrompt: '',
         preferenceAnswers: {},
         chatMessages: [],
+        conceptGenerated: false,
+        isGeneratingConcept: false,
       }
     }));
   },
+
+  // Template selection actions
+  setTemplateSelection: (sectionIndex, template) => {
+    set((state) => ({
+      templateSelections: {
+        ...state.templateSelections,
+        [sectionIndex]: template,
+      },
+    }));
+  },
+  getTemplateSelection: (sectionIndex) => {
+    const { templateSelections } = get();
+    return templateSelections?.[sectionIndex] || null;
+  },
+  clearTemplateSelections: () => set({ templateSelections: {} }),
+
+  // Preference videos actions (to preserve videos before preferenceAnswers gets cleared)
+  setPreferenceVideos: (videos) => set({ preferenceVideos: videos }),
+  clearPreferenceVideos: () => set({ preferenceVideos: [] }),
+
+  // Generated video results actions (for timeline integration)
+  setGeneratedVideoResults: (results) => set({ generatedVideoResults: results }),
+  clearGeneratedVideoResults: () => set({ generatedVideoResults: [] }),
 
   // Clear project editor after successful API call
   clearProjectEditorAfterSave: () => {
@@ -269,6 +311,8 @@ const storeImpl = (set, get) => ({
         preferenceAnswers: {},
         userPrompt: '',
         videoTypeSelection: null,
+        conceptGenerated: false,
+        isGeneratingConcept: false,
       }
     }));
   },

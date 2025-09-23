@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import reactToWebComponent from 'react-to-webcomponent';
 import './index.css'; // tailwind utilities for widget
 // @ts-ignore - importing .jsx component
-import AppRouter from './components/AppRouter';
+import AppRouter from './components/ChatFlow/AppRouter';
 import { AuthProvider } from './context/AuthContext';
 
 // Polyfill process for UMD bundles that expect it (e.g., React internals)
