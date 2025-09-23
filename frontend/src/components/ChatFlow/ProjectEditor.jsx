@@ -8,6 +8,8 @@ import { assets } from '../../assets/assets';
 import { questionsApi } from '../../services/questions';
 import { storyEngineApi } from '../../services/storyEngine';
 import { projectApi } from '../../services/project';
+import { useTimeline } from '../../hooks/useTimeline';
+import { CLOUDFRONT_URL } from '../../config/baseurl';
 
 const ProjectEditor = () => {
   const selectedProject = useProjectStore((state) => state.selectedProject);
@@ -26,6 +28,10 @@ const ProjectEditor = () => {
   const loadingData = useProjectStore((state) => state.loadingData);
   const setConceptGenerated = useProjectStore((state) => state.setConceptGenerated);
   const setIsGeneratingConcept = useProjectStore((state) => state.setIsGeneratingConcept);
+  const generatedVideoResults = useProjectStore((state) => state.generatedVideoResults || []);
+  
+  // Timeline hook
+  const timeline = useTimeline();
   
   const [inputValue, setInputValue] = useState('');
   const [showStoryArc, setShowStoryArc] = useState(false);
@@ -35,6 +41,7 @@ const ProjectEditor = () => {
   const [videoPreferences, setVideoPreferences] = useState(null);
   const [workflowData, setWorkflowData] = useState(null);
   const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(false);
+  const [addingToTimeline, setAddingToTimeline] = useState(false);
 
   // Get user data for avatar
   const { user } = useAuthStore();
@@ -569,6 +576,114 @@ const ProjectEditor = () => {
     }
   };
 
+  const handleAddToTimeline = async () => {
+    if (addingToTimeline) return;
+    
+    setAddingToTimeline(true);
+    console.log('🎬 Adding generated videos to timeline from ProjectEditor component');
+    console.log('🎬 Workflow data:', workflowData);
+    
+    try {
+      // Build videos map from stepData.videos
+      const videosMap = {};
+      
+      // Get videos from stepData
+      const videos = workflowData?.stepData?.data?.videos || [];
+      console.log('🎬 Videos from stepData:', videos);
+      
+      videos.forEach((video, index) => {
+        // Check if video is successful and has videoFiles
+        if (video.success && video.videoFiles && video.videoFiles.length > 0) {
+          const s3Key = video.videoFiles[0].s3Key;
+          if (s3Key) {
+            // Create full CloudFront URL
+            const videoUrl = s3Key.startsWith('http') ? s3Key : `${CLOUDFRONT_URL}/${s3Key}`;
+            const key = `section-${index}`;
+            videosMap[key] = videoUrl;
+            console.log(`✅ Added video ${index + 1}: ${key} -> ${videoUrl}`);
+          }
+        } else {
+          console.log(`❌ Video ${index + 1} not successful or missing videoFiles:`, video);
+        }
+      });
+
+      console.log('🎬 Final videos map for timeline:', videosMap);
+
+      if (Object.keys(videosMap).length === 0) {
+        console.error('❌ No generated videos to add to timeline');
+        setAddingToTimeline(false);
+        return;
+      }
+
+      // Use the timeline hook to add videos
+      const success = await timeline.sendVideosToTimeline(
+        null, // selectedScript - not needed for this case
+        videosMap,
+        (error) => console.error('Timeline error:', error)
+      );
+
+      if (success) {
+        console.log('✅ Successfully added generated videos to timeline');
+        
+        // Quick open/close operations before landing in editor
+        setTimeout(() => {
+          // Open chat widget
+          if (typeof window.openChat === "function") {
+            console.log('📂 Opening chat widget...');
+            window.openChat();
+          }
+          
+          // Close chat widget quickly
+          setTimeout(() => {
+            if (typeof window.closeChat === "function") {
+              console.log('📂 Closing chat widget...');
+              window.closeChat();
+            }
+          }, 200); // Very quick close
+          
+          // Open sandbox
+          setTimeout(() => {
+            console.log('🎬 Opening sandbox...');
+            window.dispatchEvent(new CustomEvent("flowWidget:open"));
+          }, 300);
+          
+          // Close sandbox quickly
+          setTimeout(() => {
+            console.log('🎬 Closing sandbox...');
+            window.dispatchEvent(new CustomEvent("flowWidget:close"));
+          }, 500);
+          
+          // Close chat interface and land in editor
+          setTimeout(() => {
+            // Close chat interface
+            window.dispatchEvent(new CustomEvent("chatInterface:close"));
+            
+            if (typeof window.hideChatInterface === "function") {
+              window.hideChatInterface();
+            } else {
+              // Fallback: hide the overlay directly
+              const overlay = document.querySelector("react-chat-interface");
+              if (overlay) {
+                overlay.style.display = "none";
+              }
+            }
+            
+            console.log('✅ Landed in timeline editor with videos');
+            
+          }, 700); // Quick transition to editor
+          
+        }, 1000); // Small delay to show success state
+        
+      } else {
+        console.error('❌ Failed to add videos to timeline');
+      }
+    } catch (error) {
+      console.error('❌ Error adding videos to timeline:', error);
+    } finally {
+      setAddingToTimeline(false);
+    }
+  };
+
   const handleClose = () => {
     window.dispatchEvent(new CustomEvent('projectEditor:close'));
   };
@@ -647,13 +762,55 @@ const ProjectEditor = () => {
               Your videos have been generated successfully. You can now add them to your timeline and start editing.
             </p>
             
-            {/* Video Timeline Placeholder */}
-            <div className="bg-gradient-to-t from-[#20272B]/50 to-[#000000]/30 rounded-2xl border-1 border-white/20 p-8 backdrop-blur-sm">
-              <div className="text-white/70 text-lg mb-4">
-                Video Timeline Component
+            {/* Add to Timeline Button */}
+            <div className="flex flex-col items-center justify-center text-center py-10">
+              <div className="w-14 h-14 rounded-full bg-yellow-400 flex items-center justify-center mb-4">
+                <svg
+                  className="w-7 h-7 text-black"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
               </div>
-              <div className="text-white/50 text-sm">
-                This is where the video timeline will be displayed
+              <div className="flex items-center gap-3">
+                <button
+                  className={`px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                    addingToTimeline ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  onClick={addingToTimeline ? undefined : handleAddToTimeline}
+                  disabled={addingToTimeline}
+                >
+                  {addingToTimeline ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      Adding to timeline...
+                    </>
+                  ) : (
+                    <>
+                      <svg 
+                        width="20" 
+                        height="20" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path 
+                          d="M11.9996 15V12M11.9996 12V9M11.9996 12H8.99963M11.9996 12H14.9996M21.1496 12.0001C21.1496 17.0535 17.053 21.1501 11.9996 21.1501C6.9462 21.1501 2.84961 17.0535 2.84961 12.0001C2.84961 6.94669 6.9462 2.8501 11.9996 2.8501C17.053 2.8501 21.1496 6.94669 21.1496 12.0001Z" 
+                          stroke="currentColor" 
+                          strokeWidth="1.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Add to timeline
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
