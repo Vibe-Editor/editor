@@ -399,6 +399,7 @@ export class ElementControl extends LitElement {
   addVideo(blob, path) {
     const elementId = this.generateUUID();
     const video = document.createElement("video");
+  
     const toastMetadata = bootstrap.Toast.getInstance(
       document.getElementById("loadMetadataToast"),
     );
@@ -412,91 +413,157 @@ export class ElementControl extends LitElement {
       let height = video.videoHeight;
       let duration = video.duration * 1000;
 
-      window.electronAPI.req.ffmpeg.getMetadata(blob, path).then((result) => {
-        let blobdata = result.blobdata;
-        let metadata = result.metadata;
-        console.log(metadata);
+      window.electronAPI.req.ffmpeg.getMetadata(blob, path)
+        .then((result) => {
+          const metadata = result?.metadata ?? null;
+          console.log("Metadata result:", result);
 
-        let isExist = false;
+          let isExist = false;
 
-        setTimeout(() => {
-          toastMetadata.hide();
-        }, 1000);
+          setTimeout(() => {
+            toastMetadata.hide();
+          }, 1000);
 
-        metadata.streams.forEach((element) => {
-          if (element.codec_type == "audio") {
-            isExist = true;
+          if (Array.isArray(metadata?.streams)) {
+            metadata.streams.forEach((element) => {
+              if (element.codec_type == "audio") {
+                isExist = true;
+              }
+            });
+          } else {
+            console.warn("No metadata received for video:", path);
           }
-        });
 
-        const nowEnv = getLocationEnv();
-        const filepath = nowEnv == "electron" ? path : `/api/file?path=${path}`;
+          const nowEnv = getLocationEnv();
+          const filepath = nowEnv == "electron" ? path : `/api/file?path=${path}`;
 
-        this.timeline[elementId] = {
-          priority: this.getNowPriority(),
-          blob: blob,
-          // Make this clip start right after the last timeline element so
-          // that videos are arranged sequentially on a single track.
-          startTime: this._getTimelineEnd(),
-          duration: duration,
-          opacity: 100,
-          location: { x: 0, y: 0 },
-          trim: { startTime: 0, endTime: duration },
-          rotation: 0,
-          width: width,
-          height: height,
-          ratio: width / height,
-          localpath: path,
-          isExistAudio: isExist,
-          filetype: "video",
-          codec: { video: "default", audio: "default" },
-          speed: 1,
-          filter: {
-            enable: false,
-            list: [],
-          },
-          origin: {
+          this.timeline[elementId] = {
+            priority: this.getNowPriority(),
+            blob: blob,
+            // Make this clip start right after the last timeline element so
+            // that videos are arranged sequentially on a single track.
+            startTime: this._getTimelineEnd(),
+            duration: duration,
+            opacity: 100,
+            location: { x: 0, y: 0 },
+            trim: { startTime: 0, endTime: duration },
+            rotation: 0,
             width: width,
             height: height,
-          },
-          animation: {
-            position: {
-              isActivate: false,
-              x: [],
-              y: [],
-              ax: [[], []],
-              ay: [[], []],
+            ratio: width / height,
+            localpath: path,
+            isExistAudio: isExist,
+            filetype: "video",
+            codec: { video: "default", audio: "default" },
+            speed: 1,
+            track: 0, // Initialize track property for row placement
+            filter: {
+              enable: false,
+              list: [],
             },
-            opacity: {
-              isActivate: false,
-              x: [],
-              ax: [[], []],
+            origin: {
+              width: width,
+              height: height,
             },
-            scale: {
-              isActivate: false,
-              x: [],
-              ax: [[], []],
+            animation: {
+              position: {
+                isActivate: false,
+                x: [],
+                y: [],
+                ax: [[], []],
+                ay: [[], []],
+              },
+              opacity: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
+              scale: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
+              rotation: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
             },
-            rotation: {
-              isActivate: false,
-              x: [],
-              ax: [[], []],
+            timelineOptions: {
+              color: "rgb(71, 59, 179)",
             },
-          },
-          timelineOptions: {
-            color: "rgb(71, 59, 179)",
-          },
-        };
+          };
 
-        this.timelineState.patchTimeline(this.timeline);
-        this.timelineState.checkPointTimeline();
+          this.timelineState.patchTimeline(this.timeline);
+          this.timelineState.checkPointTimeline();
+        })
+        .catch((err) => {
+          console.error("Error fetching metadata:", err);
+          setTimeout(() => {
+            toastMetadata.hide();
+          }, 1000);
 
-        // this.showVideo(elementId);
-      });
+          const nowEnv = getLocationEnv();
+          const filepath = nowEnv == "electron" ? path : `/api/file?path=${path}`;
 
-      // ffmpeg.ffprobe(path, (err, metadata) => {
+          this.timeline[elementId] = {
+            priority: this.getNowPriority(),
+            blob: blob,
+            startTime: this._getTimelineEnd(),
+            duration: duration,
+            opacity: 100,
+            location: { x: 0, y: 0 },
+            trim: { startTime: 0, endTime: duration },
+            rotation: 0,
+            width: width,
+            height: height,
+            ratio: width / height,
+            localpath: path,
+            isExistAudio: false,
+            filetype: "video",
+            codec: { video: "default", audio: "default" },
+            speed: 1,
+            track: 0,
+            filter: {
+              enable: false,
+              list: [],
+            },
+            origin: {
+              width: width,
+              height: height,
+            },
+            animation: {
+              position: {
+                isActivate: false,
+                x: [],
+                y: [],
+                ax: [[], []],
+                ay: [[], []],
+              },
+              opacity: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
+              scale: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
+              rotation: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
+            },
+            timelineOptions: {
+              color: "rgb(71, 59, 179)",
+            },
+          };
 
-      // })
+          this.timelineState.patchTimeline(this.timeline);
+          this.timelineState.checkPointTimeline();
+        });
     };
   }
 
@@ -516,26 +583,26 @@ export class ElementControl extends LitElement {
       let width = video.videoWidth;
       let height = video.videoHeight;
 
-      window.electronAPI.req.ffmpeg.getMetadata(blob, path);
+      window.electronAPI.req.ffmpeg.getMetadata(blob, path)
+        .then((result) => {
+          const metadata = result?.metadata;
+          let isExist = false;
 
-      window.electronAPI.res.ffmpeg.getMetadata((evt, blobdata, metadata) => {
-        if (blobdata != blob) {
-          return 0;
-        }
+          setTimeout(() => {
+            toastMetadata.hide();
+          }, 1000);
 
-        let isExist = false;
-
-        setTimeout(() => {
-          toastMetadata.hide();
-        }, 1000);
-
-        metadata.streams.forEach((element) => {
-          if (element.codec_type == "audio") {
-            isExist = true;
+          if (Array.isArray(metadata?.streams)) {
+            metadata.streams.forEach((element) => {
+              if (element.codec_type == "audio") {
+                isExist = true;
+              }
+            });
+          } else {
+            console.warn("No metadata received for video:", path);
           }
-        });
 
-        this.timeline[elementId] = {
+          this.timeline[elementId] = {
           priority: this.getNowPriority(),
           blob: blob,
           // Sequential placement – append to the timeline end.
@@ -553,6 +620,7 @@ export class ElementControl extends LitElement {
           filetype: "video",
           codec: { video: "default", audio: "default" },
           speed: 1,
+          track: 0, // Initialize track property for row placement
           filter: {
             enable: false,
             list: [],
@@ -588,13 +656,81 @@ export class ElementControl extends LitElement {
           timelineOptions: {
             color: "rgb(71, 59, 179)",
           },
-        };
+          };
 
-        this.timelineState.patchTimeline(this.timeline);
-        this.timelineState.checkPointTimeline();
+          this.timelineState.patchTimeline(this.timeline);
+          this.timelineState.checkPointTimeline();
 
-        // this.showVideo(elementId);
-      });
+          // this.showVideo(elementId);
+        })
+        .catch((err) => {
+          console.error("Error fetching metadata:", err);
+          setTimeout(() => {
+            toastMetadata.hide();
+          }, 1000);
+
+          this.timeline[elementId] = {
+            priority: this.getNowPriority(),
+            blob: blob,
+            startTime: this._getTimelineEnd(),
+            duration: duration,
+            opacity: 100,
+            location: { x: 0, y: 0 },
+            trim: { startTime: 0, endTime: duration },
+            rotation: 0,
+            width: width,
+            height: height,
+            ratio: width / height,
+            localpath: path,
+            isExistAudio: false,
+            filetype: "video",
+            codec: { video: "default", audio: "default" },
+            speed: 1,
+            track: 0, // Initialize track property for row placement
+            filter: {
+              enable: false,
+              list: [],
+            },
+            origin: {
+              width: width,
+              height: height,
+            },
+            animation: {
+              position: {
+                isActivate: false,
+                x: [],
+                y: [],
+                ax: [[], []],
+                ay: [[], []],
+              },
+              opacity: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
+              scale: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
+              rotation: {
+                isActivate: false,
+                x: [],
+                ax: [[], []],
+              },
+            },
+            timelineOptions: {
+              color: "rgb(71, 59, 179)",
+            },
+          };
+
+          this.timelineState.patchTimeline(this.timeline);
+          this.timelineState.checkPointTimeline();
+        });
+
+      // ffmpeg.ffprobe(path, (err, metadata) => {
+
+      // })
     };
   }
 
@@ -783,6 +919,7 @@ export class ElementControl extends LitElement {
         localpath: path,
         filetype: "audio",
         speed: 1,
+        track: 0, // Initialize track property for row placement
         timelineOptions: {
           color: "rgb(133, 179, 59)",
         },
@@ -810,6 +947,7 @@ export class ElementControl extends LitElement {
       localpath: path,
       filetype: "audio",
       speed: 1,
+      track: 0, // Initialize track property for row placement
       timelineOptions: {
         color: "rgb(133, 179, 59)",
       },
@@ -1083,7 +1221,7 @@ export class ElementControl extends LitElement {
   //       targetAnimationPanel.updateItem();
   //       targetElementBar.animationPanelMove(originalLeft);
   //     }
-  // }
+  //   }
   // }
 
   getTimeFromProgress() {

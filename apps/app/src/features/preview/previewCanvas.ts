@@ -22,7 +22,10 @@ import { isVisualTimelineElement } from "../../@types/timeline";
 
 @customElement("preview-canvas")
 export class PreviewCanvas extends LitElement {
+  isFullscreen = false;
+
   previewRatio: number;
+  private canvasResizeObserver?: ResizeObserver;
   isMove: boolean;
   activeElementId: string;
   mouseOrigin: { x: number; y: number };
@@ -62,6 +65,9 @@ export class PreviewCanvas extends LitElement {
 
   constructor() {
     super();
+    document.addEventListener("fullscreenchange", () => {
+      this.isFullscreen = !!document.fullscreenElement;
+    });
 
     this.previewRatio = 1920 / 1920;
     this.isMove = false;
@@ -120,6 +126,12 @@ export class PreviewCanvas extends LitElement {
   @property()
   renderOption = this.renderOptionStore.options;
 
+  @property({ type: Number }) fittingWidth = 0;
+  @property({ type: Number }) fittingHeight = 0;
+  private containerResizeObserver?: ResizeObserver;
+
+
+
   createRenderRoot() {
     useTimelineStore.subscribe((state) => {
       this.timeline = state.timeline;
@@ -153,13 +165,97 @@ export class PreviewCanvas extends LitElement {
     return this;
   }
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    // Defer observing until the canvas is in the DOM
+    requestAnimationFrame(() => {
+      if (!this.canvas) return;
+      this.canvasResizeObserver = new ResizeObserver(() => {
+        this.setPreviewRatio();
+        this.drawCanvas(this.canvas);
+      });
+      this.canvasResizeObserver.observe(this.canvas);
+      this.setPreviewRatio();
+    });
+  }
+
+  firstUpdated() {
+    const container = document.querySelector("#split_col_2") as HTMLElement;
+    const w = container?.clientWidth || 800;
+    const h = container?.clientHeight || 600;
+    this.observeContainerResize(container || this);
+    this.updateFittingSize(w, h);
+  }
+
+  observeContainerResize(container: HTMLElement) {
+    if (this.containerResizeObserver) return;
+    this.containerResizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width || 800;
+        const h = entry.contentRect.height || 440;
+        this.updateFittingSize(w, h);
+      }
+    });
+    this.containerResizeObserver.observe(container);
+  }
+
+  updateFittingSize(containerW: number, containerH: number) {
+    const aspectW = this.renderOption.previewSize.w;
+    const aspectH = this.renderOption.previewSize.h;
+    const aspectRatio = aspectW / aspectH;
+    let width = containerW;
+    let height = Math.round(width / aspectRatio);
+
+    if (height > containerH) {
+      height = containerH;
+      width = Math.round(height * aspectRatio);
+    }
+    this.fittingWidth = Math.max(width, 100);
+    this.fittingHeight = Math.max(height, 100);
+  }
+
+  updated(changedProps) {
+    if (changedProps.has("renderOption")) {
+      const container = this.parentElement || document.querySelector("#split_col_2");
+      if (container) {
+        this.updateFittingSize(container.clientWidth, container.clientHeight);
+      }
+    }
+  }
+
+  disconnectedCallback(): void {
+    if (this.canvasResizeObserver) {
+      this.canvasResizeObserver.disconnect();
+      this.canvasResizeObserver = undefined;
+    }
+    if (this.containerResizeObserver) {
+      this.containerResizeObserver.disconnect();
+      this.containerResizeObserver = undefined;
+    }
+    super.disconnectedCallback();
+  }
+
   setPreviewRatio() {
-    const width = this.canvas.offsetWidth;
+    const width = this.canvas ? this.canvas.offsetWidth : 0;
+    if (width === 0) {
+      const parent = this.canvas?.parentElement as HTMLElement | undefined;
+      const parentWidth = parent?.clientWidth ?? this.renderOption.previewSize.w;
+      this.previewRatio = this.renderOption.previewSize.w / parentWidth;
+      return;
+    }
 
     this.previewRatio = this.renderOption.previewSize.w / width;
 
     const controlDom = document.querySelector("element-control");
     controlDom.previewRatio = this.previewRatio;
+  }
+
+  toggleFullscreen() {
+    if (!this.isFullscreen) {
+      this.canvas.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
   }
 
   updateCursor() {
@@ -471,6 +567,8 @@ export class PreviewCanvas extends LitElement {
 
   showSideOption(elementId) {
     const optionGroup = document.querySelector("option-group");
+    if (!optionGroup) return; // Prevent error if not found
+
     const fileType = this.timeline[elementId].filetype;
 
     optionGroup.showOption({
@@ -554,6 +652,7 @@ export class PreviewCanvas extends LitElement {
       key: elementId,
       priority: 1,
       blob: "",
+      track: 0,
       startTime: 0,
       duration: 1000,
       opacity: 100,
@@ -1293,19 +1392,59 @@ export class PreviewCanvas extends LitElement {
     }
   }
 
-  protected render() {
-    this.style.margin = "10px";
-    return html` <canvas
-      id="elementPreviewCanvasRef"
-      class="preview"
-      style="width: 100%; max-height: calc(${this
-        .canvasMaxHeight}px - 40px); cursor: ${this.cursorType};"
-      width="1920"
-      height="1080"
-      onclick="${this.handleClickCanvas()}"
-      @mousedown=${this._handleMouseDown}
-      @mousemove=${this._handleMouseMove}
-      @mouseup=${this._handleMouseUp}
-    ></canvas>`;
+  getFittingSize(containerW: number, containerH: number, aspectW: number, aspectH: number) {
+    const containerRatio = containerW / containerH;
+    const aspectRatio = aspectW / aspectH;
+    if (containerRatio > aspectRatio) {
+      return { width: Math.round(containerH * aspectRatio), height: containerH };
+    } else {
+      return { width: containerW, height: Math.round(containerW / aspectRatio) };
+    }
   }
+
+protected render() {
+  const aspectW = this.renderOption.previewSize.w;
+  const aspectH = this.renderOption.previewSize.h;
+
+  return html`
+    <div
+      style="
+        position:relative;
+        width:100%;
+        height:100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: #111;
+      "
+    >
+      <div
+        
+      >
+        <canvas
+          id="elementPreviewCanvasRef"
+          class="preview"
+          style="
+            width: 100%;
+            height: 100%;
+            aspect-ratio: ${aspectW}/${aspectH};
+            cursor: ${this.cursorType};
+            border-radius: 20px;
+            display: block;
+            background: transparent;
+          "
+          width="${aspectW}"
+          height="${aspectH}"
+          @mousedown=${this._handleMouseDown}
+          @mousemove=${this._handleMouseMove}
+          @mouseup=${this._handleMouseUp}
+        ></canvas>
+      </div>
+      <button
+        @click=${this.toggleFullscreen}
+        style="position:absolute; top:8px; right:8px; z-index:5; background:rgba(0,0,0,0.5); border:none; color:white; padding:4px 6px; border-radius:4px; cursor:pointer;"
+      >⛶</button>
+    </div>
+  `;}
 }

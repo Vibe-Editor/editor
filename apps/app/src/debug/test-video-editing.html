@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Editing Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1b1e;
+            color: white;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #3a3f44;
+            border-radius: 8px;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background: #2a2d32;
+        }
+        
+        .success { background: #28a745; }
+        .error { background: #dc3545; }
+        .info { background: #17a2b8; }
+    </style>
+</head>
+<body>
+    <h1>Video Editing Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Component Registration Test</h2>
+        <button class="test-button" onclick="testComponentRegistration()">Test Component Registration</button>
+        <div id="component-status" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Modal Creation Test</h2>
+        <button class="test-button" onclick="testModalCreation()">Test Modal Creation</button>
+        <div id="modal-status" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Timeline Integration Test</h2>
+        <button class="test-button" onclick="testTimelineIntegration()">Test Timeline Integration</button>
+        <div id="timeline-status" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Right-Click Menu Test</h2>
+        <button class="test-button" onclick="testRightClickMenu()">Test Right-Click Menu</button>
+        <div id="menu-status" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. Manual Modal Test</h2>
+        <button class="test-button" onclick="showModalManually()">Show Modal Manually</button>
+        <div id="manual-status" class="status"></div>
+    </div>
+
+    <script>
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        function testComponentRegistration() {
+            updateStatus('component-status', 'Testing component registration...', 'info');
+            
+            try {
+                // Check if custom element is defined
+                const isRegistered = customElements.get('video-edit-modal');
+                if (isRegistered) {
+                    updateStatus('component-status', '✅ video-edit-modal component is registered', 'success');
+                } else {
+                    updateStatus('component-status', '❌ video-edit-modal component not registered', 'error');
+                }
+            } catch (error) {
+                updateStatus('component-status', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function testModalCreation() {
+            updateStatus('modal-status', 'Testing modal creation...', 'info');
+            
+            try {
+                // Try to create modal element
+                const modal = document.createElement('video-edit-modal');
+                if (modal) {
+                    document.body.appendChild(modal);
+                    updateStatus('modal-status', '✅ Modal element created successfully', 'success');
+                    
+                    // Clean up
+                    setTimeout(() => {
+                        document.body.removeChild(modal);
+                    }, 1000);
+                } else {
+                    updateStatus('modal-status', '❌ Failed to create modal element', 'error');
+                }
+            } catch (error) {
+                updateStatus('modal-status', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function testTimelineIntegration() {
+            updateStatus('timeline-status', 'Testing timeline integration...', 'info');
+            
+            try {
+                // Check if timeline canvas exists
+                const timelineCanvas = document.querySelector('element-timeline-canvas');
+                if (timelineCanvas) {
+                    // Check if openVideoEditModal method exists
+                    if (typeof timelineCanvas.openVideoEditModal === 'function') {
+                        updateStatus('timeline-status', '✅ Timeline integration working', 'success');
+                    } else {
+                        updateStatus('timeline-status', '❌ openVideoEditModal method not found', 'error');
+                    }
+                } else {
+                    updateStatus('timeline-status', '❌ Timeline canvas not found', 'error');
+                }
+            } catch (error) {
+                updateStatus('timeline-status', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function testRightClickMenu() {
+            updateStatus('menu-status', 'Testing right-click menu...', 'info');
+            
+            try {
+                // Check if menu container exists
+                const menuContainer = document.querySelector('#menuRightClick');
+                if (menuContainer) {
+                    updateStatus('menu-status', '✅ Right-click menu container found', 'success');
+                } else {
+                    updateStatus('menu-status', '❌ Right-click menu container not found', 'error');
+                }
+            } catch (error) {
+                updateStatus('menu-status', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showModalManually() {
+            updateStatus('manual-status', 'Showing modal manually...', 'info');
+            
+            try {
+                // Create a mock video element for testing
+                const mockVideoElement = {
+                    filetype: 'video',
+                    localpath: '/test/video.mp4',
+                    blob: 'blob:test-url',
+                    startTime: 0,
+                    duration: 5000,
+                    track: 0,
+                    trim: { startTime: 0, endTime: 5000 }
+                };
+
+                // Find or create modal
+                let modal = document.querySelector('video-edit-modal');
+                if (!modal) {
+                    modal = document.createElement('video-edit-modal');
+                    document.body.appendChild(modal);
+                }
+
+                // Mock timeline state
+                if (modal.timelineState) {
+                    modal.timelineState.timeline = { 'test-video': mockVideoElement };
+                } else {
+                    modal.timelineState = {
+                        timeline: { 'test-video': mockVideoElement }
+                    };
+                }
+
+                // Show modal
+                modal.show('test-video');
+                updateStatus('manual-status', '✅ Modal shown manually (check if visible)', 'success');
+                
+            } catch (error) {
+                updateStatus('manual-status', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testComponentRegistration();
+                testModalCreation();
+                testTimelineIntegration();
+                testRightClickMenu();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

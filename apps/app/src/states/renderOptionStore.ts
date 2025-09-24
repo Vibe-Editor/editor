@@ -5,6 +5,7 @@ export type RenderOptions = {
     w: number;
     h: number;
   };
+  aspectRatio?: string;
   fps: number;
   duration: number;
   backgroundColor: string;
@@ -21,6 +22,7 @@ export const renderOptionStore = createStore<IRenderOptionStore>((set) => ({
       w: 1920,
       h: 1080,
     },
+    aspectRatio: "16:9",
     fps: 60,
     duration: 10,
     backgroundColor: "#000000",

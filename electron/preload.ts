@@ -101,6 +101,12 @@ const request = {
     logout: () => ipcRenderer.invoke("auth:logout"),
     getToken: () => ipcRenderer.invoke("auth:getToken"),
   },
+  payment: {
+    openStripe: (paymentUrl) => ipcRenderer.invoke("payment:openStripe", paymentUrl),
+    close: () => ipcRenderer.invoke("payment:close"),
+    onResult: (callback) => ipcRenderer.on("stripe-payment-result", callback),
+    removeResultListener: () => ipcRenderer.removeAllListeners("stripe-payment-result"),
+  },
   stream: {
     saveBufferToVideo: (arrayBuffer) =>
       ipcRenderer.invoke("stream:saveBufferToVideo", arrayBuffer),
@@ -130,6 +136,7 @@ const request = {
   timeline: {
     addByUrl: (list) => ipcRenderer.invoke("extension:timeline:addByUrl", list),
     addByUrlWithDir: (list) => ipcRenderer.invoke("extension:timeline:addByUrlWithDir", list),
+    addByUrlWithAudioSeparation: (list) => ipcRenderer.invoke("extension:timeline:addByUrlWithAudioSeparation", list),
     addFromDir: (dirPath) => ipcRenderer.invoke("extension:timeline:addFromDir", dirPath),
   },
 };
@@ -199,6 +206,8 @@ const extension = {
       ipcRenderer.invoke("extension:timeline:addByUrl", list),
     addByUrlWithDir: (list) =>
       ipcRenderer.invoke("extension:timeline:addByUrlWithDir", list),
+    addByUrlWithAudioSeparation: (list) =>
+      ipcRenderer.invoke("extension:timeline:addByUrlWithAudioSeparation", list),
     addFromDir: (dirPath) => ipcRenderer.invoke("extension:timeline:addFromDir", dirPath),
   },
 };

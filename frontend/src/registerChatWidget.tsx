@@ -11,6 +11,11 @@ if (typeof window !== 'undefined' && (window as any).process === undefined) {
   (window as any).process = { env: { NODE_ENV: 'production' } };
 }
 
+// Ensure React is available globally for other widgets
+if (typeof window !== 'undefined') {
+  (window as any).__REACT_SHARED__ = true;
+}
+
 // Wrap ChatWidget with AuthProvider
 const ChatWidgetWithAuth = () => (
   <AuthProvider>
