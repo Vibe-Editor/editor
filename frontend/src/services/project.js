@@ -53,6 +53,20 @@ export const projectApi = {
     }
   },
 
+  // Get project workflow data
+  getProjectWorkflow: async (projectId) => {
+    try {
+      const headers = await getAuthHeaders();
+      const { data } = await axiosInstance.get(`/projects/${projectId}`, {
+        headers,
+      });
+      return data;
+    } catch (error) {
+      console.error("Error in getProjectWorkflow:", error);
+      throw error;
+    }
+  },
+
   // Update project
   updateProject: async (projectId, { name, description }) => {
     try {

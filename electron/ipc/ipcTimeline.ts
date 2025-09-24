@@ -79,7 +79,7 @@ ipcMain.handle("extension:timeline:addByUrl", async (_evt, list: {id:number,url:
     try {
       await new Promise((res, rej) => {
         ffmpeg(tempPath)
-          .outputOptions(["-pix_fmt yuv420p", "-c:v libx264", "-preset ultrafast", "-an"])
+          .outputOptions(["-pix_fmt yuv420p", "-c:v libx264", "-preset ultrafast", "-c:a copy"])
           .save(compatiblePath)
           .on('end', res)
           .on('error', rej);
@@ -213,7 +213,7 @@ ipcMain.handle("extension:timeline:addByUrlWithDir", async (_evt, list: {id:numb
     try {
       await new Promise((res, rej) => {
         ffmpeg(destPath)
-          .outputOptions(["-pix_fmt yuv420p", "-c:v libx264", "-preset ultrafast", "-an"])
+          .outputOptions(["-pix_fmt yuv420p", "-c:v libx264", "-preset ultrafast", "-c:a copy"])
           .save(compatiblePath)
           .on('end', res)
           .on('error', rej);

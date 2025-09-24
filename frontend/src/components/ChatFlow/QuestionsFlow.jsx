@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import VideoGrid from './VideoGrid';
 
-const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenerateScript }) => {
+const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenerateScript, conceptGenerated, isGeneratingConcept }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [animationPhase, setAnimationPhase] = useState('idle'); // 'idle' | 'out' | 'in'
@@ -175,11 +175,25 @@ const QuestionsFlow = ({ questionsData, onAnswerSubmit, currentAnswers, onGenera
           <div className="w-full min-h-[70vh] flex flex-col items-center justify-center text-center space-y-3">
             <h3 className="text-white text-4xl font-bold">Ready to generate script</h3>
             <p className="text-gray-300 text-lg max-w-2xl">We have enough preferences to start crafting your Story Arc.</p>
+            
+            {/* Concept Generation Loader */}
+            {isGeneratingConcept && (
+              <div className="flex flex-col items-center space-y-3 mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+                <p className="text-yellow-400 text-sm">Generating concept...</p>
+              </div>
+            )}
+            
             <button
               onClick={() => onGenerateScript && onGenerateScript()}
-              className="px-5 py-2 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-semibold text-lg transition-colors"
+              disabled={!conceptGenerated || isGeneratingConcept}
+              className={`px-5 py-2 rounded-lg font-semibold text-lg transition-colors ${
+                conceptGenerated && !isGeneratingConcept
+                  ? 'bg-yellow-400 hover:bg-yellow-500 text-black cursor-pointer'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              }`}
             >
-              Generate Script
+              {isGeneratingConcept ? 'Generating Concept...' : 'Generate Script'}
             </button>
           </div>
         )}
