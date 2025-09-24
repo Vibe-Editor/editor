@@ -8,6 +8,7 @@ import { tmpdir } from "os";
 import path from "path";
 import { pipeline } from "stream/promises";
 import fs from "fs";
+import { AudioProcessingService } from "../lib/audioProcessingService";
 
 ffmpeg.setFfprobePath(ffmpegConfig.FFPROBE_PATH);
 
@@ -79,7 +80,7 @@ ipcMain.handle("extension:timeline:addByUrl", async (_evt, list: {id:number,url:
     try {
       await new Promise((res, rej) => {
         ffmpeg(tempPath)
-          .outputOptions(["-pix_fmt yuv420p", "-c:v libx264", "-preset ultrafast", "-an"])
+          .outputOptions(["-pix_fmt yuv420p", "-c:v libx264", "-preset ultrafast", "-c:a copy"])
           .save(compatiblePath)
           .on('end', res)
           .on('error', rej);
@@ -213,7 +214,7 @@ ipcMain.handle("extension:timeline:addByUrlWithDir", async (_evt, list: {id:numb
     try {
       await new Promise((res, rej) => {
         ffmpeg(destPath)
-          .outputOptions(["-pix_fmt yuv420p", "-c:v libx264", "-preset ultrafast", "-an"])
+          .outputOptions(["-pix_fmt yuv420p", "-c:v libx264", "-preset ultrafast", "-c:a copy"])
           .save(compatiblePath)
           .on('end', res)
           .on('error', rej);
@@ -376,5 +377,93 @@ ipcMain.handle("extension:timeline:addFromDir", async (_evt, dirPath: string) =>
   }
 
   mainWindow.webContents.send("timeline:add", timeline);
+  return { status: 1 };
+});
+
+// Enhanced handler with audio separation
+ipcMain.handle("extension:timeline:addByUrlWithAudioSeparation", async (_evt, list: {id:number,url:string}[]) => {
+  console.log('🎬 Timeline (audio separation) received videos:', list);
+  
+  const { dialog } = require("electron");
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ["openDirectory"],
+  });
+
+  if (canceled || filePaths.length === 0) {
+    return { status: 0, reason: "User canceled directory selection" };
+  }
+
+  const destDir = filePaths[0];
+  const timeline: any = {};
+  let cursor = 0;
+  let audioTrack = 1;
+
+  const sortedList = [...list].sort((a, b) => {
+    const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id).replace(/[^0-9]/g, '')) || 0;
+    const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id).replace(/[^0-9]/g, '')) || 0;
+    return idA - idB;
+  });
+  
+  console.log('🎬 Timeline (audio separation) sorted videos:', sortedList);
+
+  for (let idx = 0; idx < sortedList.length; idx++) {
+    const item = sortedList[idx] as any;
+    const url = item.url;
+    const id = item.id || (idx + 1);
+
+    if (!url) continue;
+
+    const tempPath = path.join(tmpdir(), `temp-${id}-${Date.now()}.mp4`);
+    
+    try {
+      console.log(`[AudioSeparation] Downloading ${id}: ${url}`);
+      const response = await new Promise<any>((res, rej) => {
+        https.get(url, (resp) => {
+          if (resp.statusCode && resp.statusCode >= 400) {
+            rej(new Error(`HTTP ${resp.statusCode}`));
+          } else {
+            res(resp);
+          }
+        }).on("error", rej);
+      });
+      await pipeline(response, createWriteStream(tempPath));
+
+      console.log(`[AudioSeparation] Processing audio for ${id}`);
+      const processedResult = await AudioProcessingService.processVideoForTimeline(tempPath, destDir, id);
+      
+      const videoElement = AudioProcessingService.createVideoElement(processedResult, cursor, 0);
+      const videoKey = `seg-${id}`;
+      videoElement.key = videoKey;
+      
+      timeline[videoKey] = videoElement;
+      mainWindow.webContents.send("timeline:add", { [videoKey]: videoElement });
+      console.log(`[AudioSeparation] Added video element: ${videoKey}`);
+
+      if (processedResult.hasAudio && processedResult.audioPath) {
+        const audioElement = AudioProcessingService.createAudioElement(processedResult, cursor, audioTrack);
+        if (audioElement) {
+          const audioKey = `audio-${id}`;
+          audioElement.key = audioKey;
+          
+          timeline[audioKey] = audioElement;
+          mainWindow.webContents.send("timeline:add", { [audioKey]: audioElement });
+          console.log(`[AudioSeparation] Added audio element: ${audioKey} on track ${audioTrack}`);
+        }
+      }
+
+      cursor += processedResult.duration;
+      fs.unlinkSync(tempPath);
+      
+    } catch (error) {
+      console.error(`[AudioSeparation] Failed to process ${id}:`, error);
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+      continue;
+    }
+  }
+
+  mainWindow.webContents.send("timeline:add", timeline);
+  console.log(`[AudioSeparation] Completed processing ${Object.keys(timeline).length} elements`);
   return { status: 1 };
 });

@@ -374,27 +374,29 @@ function ChatWidgetSidebar({ open, setOpen }) {
   );
 
   // Timeline functions
-  const sendVideosToTimeline = useCallback(async () => {
+  const sendVideosToTimeline = useCallback(async (separateAudio = true) => {
     if (chatFlow.addingTimeline) return;
 
     chatFlow.setAddingTimeline(true);
-    const success = await timeline.sendVideosToTimeline(
+    await timeline.sendVideosToTimeline(
       chatFlow.selectedScript,
       combinedVideosMap,
       chatFlow.setError,
+      separateAudio,
     );
     chatFlow.setAddingTimeline(false);
   }, [chatFlow, timeline, combinedVideosMap]);
 
   const addSingleVideoToTimeline = useCallback(
-    async (segmentId) => {
+    async (segmentId, separateAudio = true) => {
       if (chatFlow.addingTimeline) return;
 
       chatFlow.setAddingTimeline(true);
-      const success = await timeline.addSingleVideoToTimeline(
+      await timeline.addSingleVideoToTimeline(
         segmentId,
         combinedVideosMap,
         chatFlow.setError,
+        separateAudio,
       );
       chatFlow.setAddingTimeline(false);
     },
@@ -429,6 +431,7 @@ function ChatWidgetSidebar({ open, setOpen }) {
   
 
   return (
+    // <div></div>
     <div
       className='z-10'
       onClick={() => {

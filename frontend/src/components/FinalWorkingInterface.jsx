@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useAuthStore } from "../hooks/useAuthStore";
 import { projectApi } from "../services/project";
 import { creditApi } from "../services/credit";
 import ChatLoginButton from "./ChatLoginButton";
@@ -7,11 +8,13 @@ import CreditPurchase from "./CreditPurchase";
 import InterfaceSidebar from "./InterfaceSidebar";
 import { assets } from "../assets/assets";
 import { CLOUDFRONT_URL } from "../config/baseurl.js";
+import { useProjectStore } from "../store/useProjectStore";
 
 const FinalWorkingInterface = () => {
   console.log("🔧 FinalWorkingInterface rendering...");
 
   const { user, isAuthenticated } = useAuth();
+  const authStore = useAuthStore();
   const [PaymentSuccessComponent, setPaymentSuccessComponent] = useState(null);
   const [recentProjects, setRecentProjects] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
@@ -412,12 +415,11 @@ const FinalWorkingInterface = () => {
       window.__MY_GLOBAL_PROJECT_STORE__.getState().setSelectedProject(project);
     }
     
-    // Dispatch event to notify FlowWidget about project selection
-    window.dispatchEvent(new CustomEvent('projectChanged', { 
+    // Dispatch event to open project editor
+    window.dispatchEvent(new CustomEvent('openProjectEditor', { 
       detail: { project: project } 
     }));
     
-    await navigateToEditorWithChat(project, "");
     setOpenDropdownId(null); // Close dropdown
   };
 
@@ -452,6 +454,38 @@ const FinalWorkingInterface = () => {
       // Fallback: try to trigger the auth flow directly
       if (window.electronAPI?.auth?.signIn) {
         window.electronAPI.auth.signIn();
+      }
+    }
+  };
+
+  // Close chat widget and open editor
+  const openEditorAndCloseChat = () => {
+    // First, close the chat interface and navigate to editor
+    console.log("🎯 Closing chat interface and navigating to editor");
+    
+    // Close the chat interface overlay and dispatch close event
+    window.dispatchEvent(new CustomEvent("chatInterface:close"));
+
+    if (typeof window.hideChatInterface === "function") {
+      window.hideChatInterface();
+    } else {
+      // Fallback: hide the overlay directly
+      const overlay = document.querySelector("react-chat-interface");
+      if (overlay) {
+        overlay.style.display = "none";
+      }
+    }
+
+    // Then close the chat widget
+    if (typeof window.closeChat === "function") {
+      window.closeChat();
+      console.log("Chat widget closed via window.closeChat");
+    } else {
+      // Fallback: try to close manually
+      const chatWidget = document.querySelector("react-chat-widget");
+      if (chatWidget) {
+        chatWidget.setAttribute("data-open", "false");
+        console.log("Chat widget closed via manual attribute setting");
       }
     }
   };
@@ -547,6 +581,34 @@ const FinalWorkingInterface = () => {
               </svg>
               <span>Invite</span>
             </div>
+             <div
+              onClick={openEditorAndCloseChat}
+              className='bg-[#4A90E2] hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer'
+            >
+              <svg
+                width='16'
+                height='16'
+                viewBox='0 0 16 16'
+                fill='none'
+                xmlns='http://www.w3.org/2000/svg'
+              >
+                <path
+                  d='M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z'
+                  stroke='currentColor'
+                  strokeWidth='1.5'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                />
+                <path
+                  d='M6 7h4M6 9h2'
+                  stroke='currentColor'
+                  strokeWidth='1.5'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                />
+              </svg>
+              <span>Open Editor</span>
+            </div> 
             <ChatLoginButton />
           </div>
         </div>
@@ -791,6 +853,34 @@ const FinalWorkingInterface = () => {
             <span>Invite</span>
           </div>
           <div
+            onClick={openEditorAndCloseChat}
+            className='bg-[#4A90E2] hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer'
+          >
+            <svg
+              width='16'
+              height='16'
+              viewBox='0 0 16 16'
+              fill='none'
+              xmlns='http://www.w3.org/2000/svg'
+            >
+              <path
+                d='M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z'
+                stroke='currentColor'
+                strokeWidth='1.5'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+              />
+              <path
+                d='M6 7h4M6 9h2'
+                stroke='currentColor'
+                strokeWidth='1.5'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+              />
+            </svg>
+            <span>Open Editor</span>
+          </div>
+          <div
             // Quick project creation: create project without triggering chat flow
             onClick={() => handleCreateProject("Quick project creation", false)}
             disabled={isCreatingProject}
@@ -811,7 +901,7 @@ const FinalWorkingInterface = () => {
           onSectionChange={setActiveSection}
           onToggleAllProjects={(show) => setShowAllProjects(show)}
           onPurchaseCredits={() => {
-            const token = localStorage.getItem("authToken");
+            const token = authStore.token;
             console.log("🔘 User object:", user);
             console.log("🔘 User ID:", user?.id);
             console.log("🔘 Token exists:", !!token);

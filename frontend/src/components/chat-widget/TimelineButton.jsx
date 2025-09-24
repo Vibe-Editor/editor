@@ -4,6 +4,7 @@ const TimelineButton = ({
   addingTimeline,
   onSendToTimeline,
   inConversation = false,
+  separateAudio = true,
 }) => {
   if (!canSendTimeline) return null;
 
@@ -12,7 +13,7 @@ const TimelineButton = ({
     return (
       <div className="mt-3">
         <div
-          onClick={addingTimeline ? undefined : onSendToTimeline}
+          onClick={addingTimeline ? undefined : () => onSendToTimeline(separateAudio)}
           className={`w-full bg-gray-800/10  text-[#94E7ED] py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer ${addingTimeline ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <svg 
@@ -33,7 +34,7 @@ const TimelineButton = ({
           {addingTimeline ? (
             <span>Adding to timeline...</span>
           ) : (
-            <span>Add to the timeline</span>
+            <span>{separateAudio ? 'Add to timeline (with audio separation)' : 'Add to timeline'}</span>
           )}
         </div>
       </div>
@@ -44,7 +45,7 @@ const TimelineButton = ({
   return (
     <div className='mb-4'>
       <div
-        onClick={addingTimeline ? undefined : onSendToTimeline}
+        onClick={addingTimeline ? undefined : () => onSendToTimeline(separateAudio)}
         className={`ml-20 py-2 bg-gray-700 hover:bg-gray-500 text-[#94E7ED] rounded-full font-medium flex items-center justify-center gap-2 cursor-pointer ${addingTimeline ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <svg 
@@ -65,7 +66,7 @@ const TimelineButton = ({
         {addingTimeline ? (
           <span>Adding to timeline...</span>
         ) : (
-          <span>Add to the timeline</span>
+          <span>{separateAudio ? 'Add to timeline (with audio separation)' : 'Add to timeline'}</span>
         )}
       </div>
     </div>
